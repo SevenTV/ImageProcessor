@@ -12,6 +12,7 @@ import (
 
 	"github.com/bugsnag/panicwrap"
 
+	"github.com/seventv/emote-processor/src/aws"
 	"github.com/seventv/emote-processor/src/configure"
 	"github.com/seventv/emote-processor/src/global"
 	"github.com/seventv/emote-processor/src/rmq"
@@ -64,8 +65,16 @@ func main() {
 
 	ctx := global.New(c, config)
 
-	done := make(chan struct{})
+	ctx.Instances().Rmq = rmq.New(ctx)
+	if ctx.Config().Aws.Region != "" {
+		ctx.Instances().AwsS3 = aws.NewS3(ctx)
+	}
 
+	go task.Listen(ctx)
+
+	logrus.Info("running")
+
+	done := make(chan struct{})
 	go func() {
 		<-sig
 		cancel()
@@ -85,11 +94,6 @@ func main() {
 
 		close(done)
 	}()
-
-	ctx.Instances().Rmq = rmq.New(ctx)
-	go task.Listen(ctx)
-
-	logrus.Info("running")
 
 	<-done
 
