@@ -26,9 +26,9 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          build-args:
-            - BUILDER=${{ github.actor }}
-            - VERSION=${{ github.sha }}
+          build-args: |
+            "BUILDER=${{ github.actor }}"
+            "VERSION=${{ github.sha }}"
           tags: |
             ghcr.io/seventv/emote_processor:${{ github.sha }}
             ghcr.io/seventv/emote_processor:latest
