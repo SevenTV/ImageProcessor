@@ -1,0 +1,9 @@
+log_level: debug
+working_dir: ./tmp
+max_task_duration: 15
+
+rmq:
+  server_url: amqp://emoteprocessing:password@rmq:5672/emotes
+  job_queue_name: jobs
+  result_queue_name: results
+  update_queue_name: updates

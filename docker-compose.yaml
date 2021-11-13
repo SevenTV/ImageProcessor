@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  rmq:
+    image: bitnami/rabbitmq:latest
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - rmq:/bitnami
+  
+  emotes:
+    build:
+      context: .
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - ./input:/input
+      - ./output:/output
+      - emotes:/app/tmp
+
+volumes:
+  rmq:
+  emotes:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
