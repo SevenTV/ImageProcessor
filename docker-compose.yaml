@@ -17,6 +17,8 @@ services:
       - ./input:/input
       - ./output:/output
       - emotes:/app/tmp
+    depends_on:
+      - rmq
 
 volumes:
   rmq:
