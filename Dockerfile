@@ -29,7 +29,7 @@ COPY --from=libwebp /libwebp/webpmux /usr/bin
 COPY --from=libwebp /libwebp/img2webp /usr/bin
 COPY --from=libwebp /libwebp/anim_dump /usr/bin
 
-COPY --from=libavif /libavif/avif_dump /usr/bin
+COPY --from=libavif /libavif/avifdump /usr/bin
 COPY --from=libavif /libavif/avifdec /usr/bin
 COPY --from=libavif /libavif/avifenc /usr/bin
 

@@ -77,4 +77,6 @@ type Config struct {
 
 	WorkingDir      string `json:"working_dir,omitempty" mapstructure:"working_dir,omitempty"`
 	MaxTaskDuration int    `json:"max_task_duration,omitempty" mapstructure:"max_task_duration,omitempty"`
+	Av1Decoder      string `json:"av1_decoder,omitempty" mapstructure:"av1_decoder,omitempty"`
+	Av1Encoder      string `json:"av1_encoder,omitempty" mapstructure:"av1_encoder,omitempty"`
 }

@@ -10,10 +10,11 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/seventv/emote-processor/src/configure"
 	"github.com/seventv/emote-processor/src/image"
 )
 
-func Encode(ctx context.Context, imgSize image.ImageSize, dir string, delays []int) error {
+func Encode(ctx context.Context, config *configure.Config, imgSize image.ImageSize, dir string, delays []int) error {
 	// ffmpeg -y -i input.gif -vsync 1 -pix_fmt yuva444p -f yuv4mpegpipe -strict -1 - | avifenc --stdin output.avif
 	avifFile := path.Join(dir, fmt.Sprintf("%s.avif", string(imgSize)))
 	ffmpegCmd := exec.CommandContext(
@@ -36,6 +37,11 @@ func Encode(ctx context.Context, imgSize image.ImageSize, dir string, delays []i
 		durations[i] = strconv.Itoa(v)
 	}
 
+	encoder := config.Av1Encoder
+	if encoder == "" {
+		encoder = "rav1e"
+	}
+
 	avifEncCmd := exec.CommandContext(
 		ctx,
 		"avifenc",
@@ -46,6 +52,8 @@ func Encode(ctx context.Context, imgSize image.ImageSize, dir string, delays []i
 		"--max", "20",
 		"--minalpha", "10",
 		"--maxalpha", "20",
+		"--jobs", "all",
+		"--codec", encoder,
 		"--stdin", avifFile,
 	)
 

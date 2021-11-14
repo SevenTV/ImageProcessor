@@ -18,6 +18,7 @@ import (
 	nPng "image/png"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/seventv/emote-processor/src/configure"
 	"github.com/seventv/emote-processor/src/containers/avi"
 	"github.com/seventv/emote-processor/src/containers/avif"
 	"github.com/seventv/emote-processor/src/containers/flv"
@@ -70,7 +71,7 @@ func ToType(data []byte) (image.ImageType, error) {
 	return "", ErrUnknownFormat
 }
 
-func ProcessStage1(ctx context.Context, file string, imgType image.ImageType) (image.Image, error) {
+func ProcessStage1(ctx context.Context, config *configure.Config, file string, imgType image.ImageType) (image.Image, error) {
 	// we need to get infomation about frames for a few types.
 	delay := []int{}
 	frameCount := -1
@@ -185,7 +186,21 @@ func ProcessStage1(ctx context.Context, file string, imgType image.ImageType) (i
 		}
 	case image.AVIF:
 		// avifdec
-		if out, err := exec.CommandContext(ctx, "avif_dump", file, fmt.Sprintf("%s/dump_%%04d.png", frameDir)).Output(); err != nil {
+		decoder := config.Av1Decoder
+		if decoder == "" {
+			decoder = "dav1d"
+		}
+
+		if out, err := exec.CommandContext(
+			ctx,
+			"avifdump",
+			"--codec", decoder,
+			"--png-compress", "0",
+			"--jobs", "all",
+			"--depth", "16",
+			file,
+			fmt.Sprintf("%s/dump_%%04d.png", frameDir),
+		).Output(); err != nil {
 			return image.Image{}, err
 		} else {
 			matches := avifDumpRe.FindAllStringSubmatch(utils.B2S(out), -1)
@@ -243,7 +258,7 @@ func ProcessStage1(ctx context.Context, file string, imgType image.ImageType) (i
 	}, nil
 }
 
-func ProcessStage2(ctx context.Context, img image.Image) error {
+func ProcessStage2(ctx context.Context, config *configure.Config, img image.Image) error {
 	for _, v := range image.ImageSizes {
 		dir := path.Join(img.Dir, "frames", string(v))
 		if err := os.MkdirAll(dir, 0700); err != nil {
@@ -268,7 +283,7 @@ func ProcessStage2(ctx context.Context, img image.Image) error {
 	return err
 }
 
-func ProcessStage3(ctx context.Context, img image.Image) error {
+func ProcessStage3(ctx context.Context, config *configure.Config, img image.Image) error {
 	errCh := make(chan error)
 
 	wg := sync.WaitGroup{}
@@ -303,7 +318,7 @@ func ProcessStage3(ctx context.Context, img image.Image) error {
 		wg.Add(1)
 		go func(v image.ImageSize) {
 			defer wg.Done()
-			errCh <- avif.Encode(ctx, v, img.Dir, img.Delays)
+			errCh <- avif.Encode(ctx, config, v, img.Dir, img.Delays)
 		}(v)
 	}
 

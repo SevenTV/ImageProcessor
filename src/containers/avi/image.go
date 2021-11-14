@@ -20,5 +20,3 @@ func Test(data []byte) bool {
 		data[14] == 'S' &&
 		data[15] == 'T'
 }
-
-// func ConvertToPng()

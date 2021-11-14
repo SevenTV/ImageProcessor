@@ -156,7 +156,7 @@ func (t *Task) start(ctx global.Context) {
 		}
 
 		var img image.Image
-		if img, err = containers.ProcessStage1(t.ctx, fileName, imgType); err != nil {
+		if img, err = containers.ProcessStage1(t.ctx, ctx.Config(), fileName, imgType); err != nil {
 			goto completed
 		}
 
@@ -170,7 +170,7 @@ func (t *Task) start(ctx global.Context) {
 			Timestamp: time.Now(),
 		}
 
-		if err = containers.ProcessStage2(t.ctx, img); err != nil {
+		if err = containers.ProcessStage2(t.ctx, ctx.Config(), img); err != nil {
 			goto completed
 		}
 
@@ -184,7 +184,7 @@ func (t *Task) start(ctx global.Context) {
 			Timestamp: time.Now(),
 		}
 
-		if err = containers.ProcessStage3(t.ctx, img); err != nil {
+		if err = containers.ProcessStage3(t.ctx, ctx.Config(), img); err != nil {
 			goto completed
 		}
 
