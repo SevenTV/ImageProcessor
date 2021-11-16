@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/seventv/emote-processor/src/global"
-	"github.com/seventv/emote-processor/src/job"
+	"github.com/seventv/EmoteProcessor/src/global"
+	"github.com/seventv/EmoteProcessor/src/job"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )

@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/seventv/emote-processor/src/configure"
-	"github.com/seventv/emote-processor/src/image"
+	"github.com/seventv/EmoteProcessor/src/configure"
+	"github.com/seventv/EmoteProcessor/src/image"
 )
 
 func Encode(ctx context.Context, config *configure.Config, imgSize image.ImageSize, dir string, delays []int) error {

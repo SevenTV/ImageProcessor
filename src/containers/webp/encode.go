@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"path"
 
-	"github.com/seventv/emote-processor/src/image"
+	"github.com/seventv/EmoteProcessor/src/image"
 )
 
 func Encode(ctx context.Context, imgSize image.ImageSize, dir string, delays []int) error {

@@ -12,11 +12,11 @@ import (
 
 	"github.com/bugsnag/panicwrap"
 
-	"github.com/seventv/emote-processor/src/aws"
-	"github.com/seventv/emote-processor/src/configure"
-	"github.com/seventv/emote-processor/src/global"
-	"github.com/seventv/emote-processor/src/rmq"
-	"github.com/seventv/emote-processor/src/task"
+	"github.com/seventv/EmoteProcessor/src/aws"
+	"github.com/seventv/EmoteProcessor/src/configure"
+	"github.com/seventv/EmoteProcessor/src/global"
+	"github.com/seventv/EmoteProcessor/src/rmq"
+	"github.com/seventv/EmoteProcessor/src/task"
 	"github.com/sirupsen/logrus"
 )
 

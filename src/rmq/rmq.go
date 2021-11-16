@@ -3,7 +3,7 @@ package rmq
 import (
 	"time"
 
-	"github.com/seventv/emote-processor/src/global"
+	"github.com/seventv/EmoteProcessor/src/global"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )

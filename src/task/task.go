@@ -15,12 +15,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/seventv/emote-processor/src/aws"
-	"github.com/seventv/emote-processor/src/containers"
-	"github.com/seventv/emote-processor/src/global"
-	"github.com/seventv/emote-processor/src/image"
-	"github.com/seventv/emote-processor/src/job"
-	"github.com/seventv/emote-processor/src/utils"
+	"github.com/seventv/EmoteProcessor/src/aws"
+	"github.com/seventv/EmoteProcessor/src/containers"
+	"github.com/seventv/EmoteProcessor/src/global"
+	"github.com/seventv/EmoteProcessor/src/image"
+	"github.com/seventv/EmoteProcessor/src/job"
+	"github.com/seventv/EmoteProcessor/src/utils"
 	"github.com/sirupsen/logrus"
 )
 
