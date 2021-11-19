@@ -22,7 +22,7 @@ var (
 
 func NewS3(ctx global.Context) global.AwsS3 {
 	sess, err := session.NewSession(&aws.Config{
-		Credentials: credentials.NewStaticCredentials("", ctx.Config().Aws.SecretKey, ctx.Config().Aws.SessionToken),
+		Credentials: credentials.NewStaticCredentials(ctx.Config().Aws.AccessToken, ctx.Config().Aws.SecretKey, ""),
 		Region:      aws.String(ctx.Config().Aws.Region),
 	})
 	if err != nil {
