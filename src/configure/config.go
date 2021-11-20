@@ -63,9 +63,9 @@ type Config struct {
 
 	// Aws
 	Aws struct {
-		SessionToken string `json:"session_token,omitempty" mapstructure:"session_token,omitempty"`
-		SecretKey    string `json:"secret_key,omitempty" mapstructure:"secret_key,omitempty"`
-		Region       string `json:"region,omitempty" mapstructure:"region,omitempty"`
+		AccessToken string `json:"access_token,omitempty" mapstructure:"access_token,omitempty"`
+		SecretKey   string `json:"secret_key,omitempty" mapstructure:"secret_key,omitempty"`
+		Region      string `json:"region,omitempty" mapstructure:"region,omitempty"`
 	} `json:"aws,omitempty" mapstructure:"aws,omitempty"`
 
 	Rmq struct {
