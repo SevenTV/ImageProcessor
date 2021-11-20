@@ -13,7 +13,7 @@ There are 3 stages to an emote upload.
 |  GIF        | ✅   ​   ​          | ✅                    |
 |  JPEG       | ❌   ​  ​           | ❌                    |
 |  MP4        | ✅¹               | ❌                    |
-|  PNG        | ❌ ​ ​              | ✅                    |
+|  PNG/APNG   | ✅¹               | ✅                    |
 |  TIFF       | ❌ ​ ​              | ✅                    |
 |  WEBM       | ✅¹               ​| ❌                    |
 |  WEBP       |​​​​ ✅​​   ​        ​     ​| ✅                    |
