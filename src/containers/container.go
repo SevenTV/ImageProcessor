@@ -81,14 +81,14 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 	switch imgType {
 	case image.GIF:
 		// golang
-		err := exec.CommandContext(ctx, "gifsicle", "-U", file, "-o", file).Run()
+		out, err := exec.CommandContext(ctx, "gifsicle", "-U", file, "-o", file).CombinedOutput()
 		if err != nil {
-			return image.Image{}, err
+			return image.Image{}, fmt.Errorf("gifsicle failed: %s : %s", err.Error(), out)
 		}
 
 		f, err := os.OpenFile(file, os.O_RDONLY, 0600)
 		if err != nil {
-			return image.Image{}, err
+			return image.Image{}, fmt.Errorf("read file failed: %s", err.Error())
 		}
 		defer f.Close()
 
@@ -102,9 +102,9 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 	case image.WEBP:
 		// webpmux -info
 		// avifdec -i
-		data, err := exec.CommandContext(ctx, "webpmux", "-info", file).Output()
+		data, err := exec.CommandContext(ctx, "webpmux", "-info", file).CombinedOutput()
 		if err != nil {
-			return image.Image{}, err
+			return image.Image{}, fmt.Errorf("webpmux failed: %s : %s", err.Error(), data)
 		}
 
 		matches := webpMuxRe.FindAllStringSubmatch(utils.B2S(data), -1)
@@ -128,15 +128,15 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 	dir := path.Dir(file)
 	frameDir := path.Join(dir, "frames")
 	if err := os.MkdirAll(frameDir, 0700); err != nil {
-		return image.Image{}, err
+		return image.Image{}, fmt.Errorf("mkdir failed: %s", err.Error())
 	}
 
 	// this will get all the frames.
 	switch imgType {
 	case image.AVI, image.FLV, image.GIF, image.JPEG, image.MP4, image.TIFF, image.WEBM, image.PNG:
 		// ffmpeg
-		if err := exec.CommandContext(ctx, "ffmpeg", "-i", file, "-vsync", "0", "-f", "image2", "-start_number", "0", fmt.Sprintf("%s/%s", frameDir, "dump_%04d.png")).Run(); err != nil {
-			return image.Image{}, err
+		if out, err := exec.CommandContext(ctx, "ffmpeg", "-i", file, "-vsync", "0", "-f", "image2", "-start_number", "0", fmt.Sprintf("%s/%s", frameDir, "dump_%04d.png")).CombinedOutput(); err != nil {
+			return image.Image{}, fmt.Errorf("ffmpeg failed: %s : %s", err.Error(), out)
 		}
 		// we need to count them here tho.
 		if frameCount == -1 {
@@ -151,7 +151,7 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 				}
 				return nil
 			}); err != nil {
-				return image.Image{}, err
+				return image.Image{}, fmt.Errorf("filepath walk failed: %s", err.Error())
 			}
 			delay = make([]int, frameCount)
 			if frameCount == 0 {
@@ -160,9 +160,9 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 			if frameCount > 1 {
 				// we need to calculate the frame timings, by looking at the old fps.
 				// :)
-				fpsData, err := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", "v", "-of", "default=noprint_wrappers=1:nokey=1", "-show_entries", "stream=r_frame_rate", file).Output()
+				fpsData, err := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", "v", "-of", "default=noprint_wrappers=1:nokey=1", "-show_entries", "stream=r_frame_rate", file).CombinedOutput()
 				if err != nil {
-					return image.Image{}, err
+					return image.Image{}, fmt.Errorf("ffprobe failed: %s : %s", err.Error(), fpsData)
 				}
 
 				fpsSplits := strings.Split(utils.B2S(fpsData), "/")
@@ -202,8 +202,8 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 			"--depth", "16",
 			file,
 			fmt.Sprintf("%s/dump_%%04d.png", frameDir),
-		).Output(); err != nil {
-			return image.Image{}, err
+		).CombinedOutput(); err != nil {
+			return image.Image{}, fmt.Errorf("avifdump failed: %s : %s", err.Error(), out)
 		} else {
 			matches := avifDumpRe.FindAllStringSubmatch(utils.B2S(out), -1)
 			if len(matches) == 0 {
@@ -219,14 +219,14 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 		}
 	case image.WEBP:
 		// anim_dump
-		if err := exec.CommandContext(ctx, "anim_dump", "-folder", frameDir, file).Run(); err != nil {
-			return image.Image{}, err
+		if out, err := exec.CommandContext(ctx, "anim_dump", "-folder", frameDir, file).CombinedOutput(); err != nil {
+			return image.Image{}, fmt.Errorf("anim_dump failed: %s : %s", err.Error(), out)
 		}
 	default:
 		return image.Image{}, ErrUnknownFormat
 	}
 
-	err := exec.CommandContext(ctx,
+	out, err := exec.CommandContext(ctx,
 		"ffmpeg",
 		"-f", "image2",
 		"-start_number", "0",
@@ -235,15 +235,15 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 		"-f", "image2",
 		"-start_number", "0",
 		"-y", fmt.Sprintf("%s/%s", frameDir, "dump_%04d.png"),
-	).Run()
+	).CombinedOutput()
 	if err != nil {
-		return image.Image{}, err
+		return image.Image{}, fmt.Errorf("ffmpeg failed: %s : %s", err.Error(), out)
 	}
 
 	// we now at this point know how many frames are in the emote and also the timings.
 	pngFile, err := os.OpenFile(path.Join(frameDir, "dump_0000.png"), os.O_RDONLY, 0600)
 	if err != nil {
-		return image.Image{}, err
+		return image.Image{}, fmt.Errorf("open file failed: %s", err.Error())
 	}
 	defer pngFile.Close()
 
@@ -264,7 +264,7 @@ func ProcessStage2(ctx context.Context, config *configure.Config, img image.Imag
 	for v := range sizes {
 		dir := path.Join(img.Dir, "frames", v)
 		if err := os.MkdirAll(dir, 0700); err != nil {
-			return err
+			return fmt.Errorf("mkdir failed: %s", err.Error())
 		}
 	}
 

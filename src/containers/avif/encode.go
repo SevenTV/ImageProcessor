@@ -1,6 +1,7 @@
 package avif
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -74,6 +75,13 @@ func Encode(ctx context.Context, config *configure.Config, name string, outName 
 	ffmpegCmd.Stdout = w
 	avifEncCmd.Stdin = r
 
+	avifEncOut := bytes.NewBuffer(nil)
+	ffmpegOut := bytes.NewBuffer(nil)
+
+	ffmpegCmd.Stderr = ffmpegOut
+	avifEncCmd.Stdout = avifEncOut
+	avifEncCmd.Stderr = avifEncOut
+
 	err := avifEncCmd.Start()
 	if err != nil {
 		return err
@@ -97,6 +105,9 @@ func Encode(ctx context.Context, config *configure.Config, name string, outName 
 	}()
 
 	err = multierror.Append(<-done, <-done).ErrorOrNil()
+	if err != nil {
+		err = fmt.Errorf("avifenc failed: %s : %s : %s", err.Error(), ffmpegOut.String(), avifEncOut.String())
+	}
 
 	return err
 }

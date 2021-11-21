@@ -17,5 +17,10 @@ func Edit(ctx context.Context, name string, dir string, width uint16, height uin
 	files[2] = "--size"
 	files[3] = fmt.Sprintf("%dx%d", width, height)
 
-	return exec.CommandContext(ctx, "vipsthumbnail", files...).Run()
+	out, err := exec.CommandContext(ctx, "vipsthumbnail", files...).CombinedOutput()
+	if err != nil {
+		err = fmt.Errorf("vipsthumbnail failed: %s : %s", err.Error(), out)
+	}
+
+	return err
 }

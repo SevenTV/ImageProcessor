@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os/exec"
 	"path"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 func Encode(ctx context.Context, name string, outName string, dir string, delays []int) error {
@@ -21,8 +19,7 @@ func Encode(ctx context.Context, name string, outName string, dir string, delays
 	files[len(files)-1] = gifFile
 
 	if out, err := exec.CommandContext(ctx, "gifski", files...).CombinedOutput(); err != nil {
-		spew.Dump(out)
-		return err
+		return fmt.Errorf("gifski failed: %s : %s", err.Error(), out)
 	}
 
 	args := make([]string, len(delays)*2+2)
@@ -33,12 +30,12 @@ func Encode(ctx context.Context, name string, outName string, dir string, delays
 		args[2+i*2+1] = fmt.Sprintf("#%d", i)
 	}
 
-	if err := exec.CommandContext(ctx, "gifsicle", args...).Run(); err != nil {
-		return err
+	if out, err := exec.CommandContext(ctx, "gifsicle", args...).CombinedOutput(); err != nil {
+		return fmt.Errorf("gifsicle failed: %s : %s", err.Error(), out)
 	}
 
-	if err := exec.CommandContext(ctx, "gifsicle", "-b", "-O3", gifFile).Run(); err != nil {
-		return err
+	if out, err := exec.CommandContext(ctx, "gifsicle", "-b", "-O3", gifFile).CombinedOutput(); err != nil {
+		return fmt.Errorf("gifsicle failed: %s : %s", err.Error(), out)
 	}
 
 	return nil

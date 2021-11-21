@@ -23,7 +23,7 @@ RUN apk add --no-cache make git && \
 
 FROM ghcr.io/seventv/ffmpeg
 
-RUN apk add --no-cache vips-tools optipng
+RUN apk add --no-cache optipng vips-tools
 
 COPY --from=libwebp /libwebp/cwebp /usr/bin
 COPY --from=libwebp /libwebp/dwebp /usr/bin
