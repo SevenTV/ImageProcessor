@@ -13,24 +13,26 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	nGif "image/gif"
 	nPng "image/png"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/seventv/EmoteProcessor/src/configure"
-	"github.com/seventv/EmoteProcessor/src/containers/avi"
-	"github.com/seventv/EmoteProcessor/src/containers/avif"
-	"github.com/seventv/EmoteProcessor/src/containers/flv"
-	"github.com/seventv/EmoteProcessor/src/containers/gif"
-	"github.com/seventv/EmoteProcessor/src/containers/jpeg"
-	"github.com/seventv/EmoteProcessor/src/containers/mp4"
-	"github.com/seventv/EmoteProcessor/src/containers/png"
-	"github.com/seventv/EmoteProcessor/src/containers/tiff"
-	"github.com/seventv/EmoteProcessor/src/containers/webm"
-	"github.com/seventv/EmoteProcessor/src/containers/webp"
-	"github.com/seventv/EmoteProcessor/src/image"
-	"github.com/seventv/EmoteProcessor/src/utils"
+	"github.com/seventv/ImageProcessor/src/configure"
+	"github.com/seventv/ImageProcessor/src/containers/avi"
+	"github.com/seventv/ImageProcessor/src/containers/avif"
+	"github.com/seventv/ImageProcessor/src/containers/flv"
+	"github.com/seventv/ImageProcessor/src/containers/gif"
+	"github.com/seventv/ImageProcessor/src/containers/jpeg"
+	"github.com/seventv/ImageProcessor/src/containers/mp4"
+	"github.com/seventv/ImageProcessor/src/containers/png"
+	"github.com/seventv/ImageProcessor/src/containers/tiff"
+	"github.com/seventv/ImageProcessor/src/containers/webm"
+	"github.com/seventv/ImageProcessor/src/containers/webp"
+	"github.com/seventv/ImageProcessor/src/image"
+	"github.com/seventv/ImageProcessor/src/job"
+	"github.com/seventv/ImageProcessor/src/utils"
 )
 
 var (
@@ -71,7 +73,7 @@ func ToType(data []byte) (image.ImageType, error) {
 	return "", ErrUnknownFormat
 }
 
-func ProcessStage1(ctx context.Context, config *configure.Config, file string, imgType image.ImageType) (image.Image, error) {
+func ProcessStage1(ctx context.Context, config *configure.Config, file string, imgType image.ImageType, aspectRatioXY [2]int) (image.Image, error) {
 	// we need to get infomation about frames for a few types.
 	delay := []int{}
 	frameCount := -1
@@ -229,7 +231,7 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 		"-f", "image2",
 		"-start_number", "0",
 		"-i", fmt.Sprintf("%s/%s", frameDir, "dump_%04d.png"),
-		"-vf", "format=rgba,pad=h=if(gt(iw/ih\\,3)\\,iw/3\\,ih):w=if(lt(iw/ih\\,1)\\,ih\\,iw):x=0:y=(oh-ih):color=#00000000",
+		"-vf", fmt.Sprintf("format=rgba,pad=h=if(gt(iw/ih\\,%d)\\,iw/%d\\,ih):w=if(lt(iw/ih\\,%d)\\,ih/%d\\,iw):x=0:y=(oh-ih):color=#00000000", aspectRatioXY[0], aspectRatioXY[0], aspectRatioXY[1], aspectRatioXY[1]),
 		"-f", "image2",
 		"-start_number", "0",
 		"-y", fmt.Sprintf("%s/%s", frameDir, "dump_%04d.png"),
@@ -258,9 +260,9 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 	}, nil
 }
 
-func ProcessStage2(ctx context.Context, config *configure.Config, img image.Image) error {
-	for _, v := range image.ImageSizes {
-		dir := path.Join(img.Dir, "frames", string(v))
+func ProcessStage2(ctx context.Context, config *configure.Config, img image.Image, sizes map[string]job.ImageSize) error {
+	for v := range sizes {
+		dir := path.Join(img.Dir, "frames", v)
 		if err := os.MkdirAll(dir, 0700); err != nil {
 			return err
 		}
@@ -269,68 +271,240 @@ func ProcessStage2(ctx context.Context, config *configure.Config, img image.Imag
 	errCh := make(chan error, 5)
 	defer close(errCh)
 
-	for _, t := range image.ImageSizes {
-		go func(t image.ImageSize) {
-			errCh <- png.Edit(ctx, t, img.Dir, image.ImageSizesMap[t][2], image.ImageSizesMap[t][0], len(img.Delays))
-		}(t)
+	for name, size := range sizes {
+		go func(name string, size job.ImageSize) {
+			errCh <- png.Edit(ctx, name, img.Dir, uint16(size.Width), uint16(size.Height), len(img.Delays))
+		}(name, size)
 	}
 
 	var err error
-	for i := 0; i < len(image.ImageSizes); i++ {
+	for i := 0; i < len(sizes); i++ {
 		err = multierror.Append(err, <-errCh).ErrorOrNil()
 	}
 
 	return err
 }
 
-func ProcessStage3(ctx context.Context, config *configure.Config, img image.Image) error {
+func ProcessStage3(ctx context.Context, config *configure.Config, img image.Image, sizes map[string]job.ImageSize, settings uint64) ([]job.File, error) {
 	errCh := make(chan error)
 
 	wg := sync.WaitGroup{}
 
-	for _, v := range image.ImageSizes {
-		wg.Add(1)
-		go func(v image.ImageSize) {
-			defer wg.Done()
-			errCh <- webp.Encode(ctx, v, img.Dir, img.Delays)
-		}(v)
+	isAnimated := len(img.Delays) > 1
+
+	files := []job.File{}
+	fileChan := make(chan job.File)
+	start := time.Now()
+
+	// AVIF
+	if (settings&job.EnableOutputAnimatedAVIF != 0 && isAnimated) || (settings&job.EnableOutputStaticAVIF != 0 && !isAnimated) {
+		for name := range sizes {
+			wg.Add(1)
+			go func(name string) {
+				defer wg.Done()
+				err := avif.Encode(ctx, config, name, name, img.Dir, img.Delays)
+				if err == nil {
+					info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s.avif", name)))
+					if err != nil {
+						errCh <- err
+						return
+					}
+
+					fileChan <- job.File{
+						Name:        fmt.Sprintf("%s.avif", name),
+						ContentType: "image/avif",
+						Size:        int(info.Size()),
+						Animated:    isAnimated,
+						TimeTaken:   time.Since(start),
+					}
+				}
+				errCh <- err
+			}(name)
+		}
 	}
 
-	if len(img.Delays) > 1 {
-		for _, v := range image.ImageSizes {
+	// WEBP
+	if (settings&job.EnableOutputAnimatedWEBP != 0 && isAnimated) || (settings&job.EnableOutputStaticWEBP != 0 && !isAnimated) {
+		for name := range sizes {
 			wg.Add(1)
-			go func(v image.ImageSize) {
+			go func(name string) {
 				defer wg.Done()
-				errCh <- gif.Encode(ctx, v, img.Dir, img.Delays)
-			}(v)
-		}
-	} else {
-		for _, v := range image.ImageSizes {
-			wg.Add(1)
-			go func(v image.ImageSize) {
-				defer wg.Done()
-				errCh <- exec.CommandContext(ctx, "cp", path.Join(img.Dir, "frames", string(v), "dump_0000.png"), path.Join(img.Dir, fmt.Sprintf("%s.png", v))).Run()
-			}(v)
+				err := webp.Encode(ctx, name, name, img.Dir, img.Delays)
+				if err == nil {
+					info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s.webp", name)))
+					if err != nil {
+						errCh <- err
+						return
+					}
+
+					fileChan <- job.File{
+						Name:        fmt.Sprintf("%s.webp", name),
+						ContentType: "image/webp",
+						Size:        int(info.Size()),
+						Animated:    isAnimated,
+						TimeTaken:   time.Since(start),
+					}
+				}
+				errCh <- err
+			}(name)
 		}
 	}
 
-	for _, v := range image.ImageSizes {
-		wg.Add(1)
-		go func(v image.ImageSize) {
-			defer wg.Done()
-			errCh <- avif.Encode(ctx, config, v, img.Dir, img.Delays)
-		}(v)
+	// GIF
+	if settings&job.EnableOutputAnimatedGIF != 0 && isAnimated {
+		for name := range sizes {
+			wg.Add(1)
+			go func(name string) {
+				defer wg.Done()
+				err := gif.Encode(ctx, name, name, img.Dir, img.Delays)
+				if err == nil {
+					info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s.gif", name)))
+					if err != nil {
+						errCh <- err
+						return
+					}
+
+					fileChan <- job.File{
+						Name:        fmt.Sprintf("%s.gif", name),
+						ContentType: "image/gif",
+						Size:        int(info.Size()),
+						Animated:    isAnimated,
+						TimeTaken:   time.Since(start),
+					}
+				}
+				errCh <- err
+			}(name)
+		}
+	}
+
+	// PNG
+	if settings&job.EnableOutputStaticPNG != 0 && !isAnimated {
+		for name := range sizes {
+			wg.Add(1)
+			go func(name string) {
+				defer wg.Done()
+				err := png.Encode(ctx, path.Join(img.Dir, "frames", name, "dump_0000.png"), path.Join(img.Dir, fmt.Sprintf("%s.png", name)))
+				if err == nil {
+					info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s.png", name)))
+					if err != nil {
+						errCh <- err
+						return
+					}
+
+					fileChan <- job.File{
+						Name:        fmt.Sprintf("%s.png", name),
+						ContentType: "image/png",
+						Size:        int(info.Size()),
+						Animated:    false,
+						TimeTaken:   time.Since(start),
+					}
+				}
+				errCh <- err
+			}(name)
+		}
+	}
+
+	// THUMBNAILS
+	if isAnimated && settings&job.EnableOutputAnimatedThumbanils != 0 {
+		for name := range sizes {
+			if settings&job.EnableOutputStaticAVIF != 0 {
+				wg.Add(1)
+				go func(name string) {
+					defer wg.Done()
+					err := avif.Encode(ctx, config, name, fmt.Sprintf("%s_static", name), img.Dir, img.Delays[:1])
+					if err == nil {
+						info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s_static.avif", name)))
+						if err != nil {
+							errCh <- err
+							return
+						}
+
+						fileChan <- job.File{
+							Name:        fmt.Sprintf("%s_static.avif", name),
+							ContentType: "image/avif",
+							Size:        int(info.Size()),
+							Animated:    false,
+							TimeTaken:   time.Since(start),
+						}
+					}
+					errCh <- err
+				}(name)
+			}
+			if settings&job.EnableOutputStaticWEBP != 0 {
+				wg.Add(1)
+				go func(name string) {
+					defer wg.Done()
+					err := webp.Encode(ctx, name, fmt.Sprintf("%s_static", name), img.Dir, img.Delays[:1])
+					if err == nil {
+						info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s_static.webp", name)))
+						if err != nil {
+							errCh <- err
+							return
+						}
+
+						fileChan <- job.File{
+							Name:        fmt.Sprintf("%s_static.webp", name),
+							ContentType: "image/webp",
+							Size:        int(info.Size()),
+							Animated:    false,
+							TimeTaken:   time.Since(start),
+						}
+					}
+					errCh <- err
+				}(name)
+
+			}
+			if settings&job.EnableOutputStaticPNG != 0 {
+				wg.Add(1)
+				go func(name string) {
+					defer wg.Done()
+					err := png.Encode(ctx, path.Join(img.Dir, "frames", name, "dump_0000.png"), path.Join(img.Dir, fmt.Sprintf("%s_static.png", name)))
+					if err == nil {
+						info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s_static.png", name)))
+						if err != nil {
+							errCh <- err
+							return
+						}
+
+						fileChan <- job.File{
+							Name:        fmt.Sprintf("%s_static.png", name),
+							ContentType: "image/png",
+							Size:        int(info.Size()),
+							Animated:    false,
+							TimeTaken:   time.Since(start),
+						}
+					}
+					errCh <- err
+				}(name)
+			}
+		}
 	}
 
 	go func() {
 		wg.Wait()
 		close(errCh)
+		close(fileChan)
 	}()
 
+	wg2 := sync.WaitGroup{}
+	wg2.Add(2)
 	var err error
-	for e := range errCh {
-		err = multierror.Append(err, e).ErrorOrNil()
-	}
 
-	return multierror.Append(err, os.RemoveAll(path.Join(img.Dir, "frames"))).ErrorOrNil()
+	go func() {
+		defer wg2.Done()
+		for e := range errCh {
+			err = multierror.Append(err, e).ErrorOrNil()
+		}
+	}()
+
+	go func() {
+		defer wg2.Done()
+		for f := range fileChan {
+			files = append(files, f)
+		}
+	}()
+
+	wg2.Wait()
+
+	return files, multierror.Append(err, os.RemoveAll(path.Join(img.Dir, "frames"))).ErrorOrNil()
 }

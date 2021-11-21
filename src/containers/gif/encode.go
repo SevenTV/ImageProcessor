@@ -7,15 +7,14 @@ import (
 	"path"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/seventv/EmoteProcessor/src/image"
 )
 
-func Encode(ctx context.Context, imgSize image.ImageSize, dir string, delays []int) error {
-	gifFile := path.Join(dir, fmt.Sprintf("%s.gif", imgSize))
+func Encode(ctx context.Context, name string, outName string, dir string, delays []int) error {
+	gifFile := path.Join(dir, fmt.Sprintf("%s.gif", outName))
 
 	files := make([]string, len(delays)+2)
 	for i := range delays {
-		files[i] = path.Join(dir, "frames", string(imgSize), fmt.Sprintf("dump_%04d.png", i))
+		files[i] = path.Join(dir, "frames", name, fmt.Sprintf("dump_%04d.png", i))
 	}
 
 	files[len(files)-2] = "--output"

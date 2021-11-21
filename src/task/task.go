@@ -15,12 +15,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/seventv/EmoteProcessor/src/aws"
-	"github.com/seventv/EmoteProcessor/src/containers"
-	"github.com/seventv/EmoteProcessor/src/global"
-	"github.com/seventv/EmoteProcessor/src/image"
-	"github.com/seventv/EmoteProcessor/src/job"
-	"github.com/seventv/EmoteProcessor/src/utils"
+	"github.com/seventv/ImageProcessor/src/aws"
+	"github.com/seventv/ImageProcessor/src/containers"
+	"github.com/seventv/ImageProcessor/src/global"
+	"github.com/seventv/ImageProcessor/src/image"
+	"github.com/seventv/ImageProcessor/src/job"
+	"github.com/seventv/ImageProcessor/src/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -40,6 +40,8 @@ type Task struct {
 	failed    error
 
 	dir string
+
+	files []job.File
 
 	events chan TaskEvent
 
@@ -84,6 +86,7 @@ func (t *Task) start(ctx global.Context) {
 	}()
 
 	t.events <- TaskEvent{
+		JobID:     t.job.ID,
 		Type:      Started,
 		Timestamp: time.Now(),
 	}
@@ -121,6 +124,7 @@ func (t *Task) start(ctx global.Context) {
 	}
 
 	t.events <- TaskEvent{
+		JobID:     t.job.ID,
 		Type:      Downloaed,
 		Timestamp: time.Now(),
 	}
@@ -151,44 +155,59 @@ func (t *Task) start(ctx global.Context) {
 		}
 
 		t.events <- TaskEvent{
+			JobID:     t.job.ID,
 			Type:      StageOne,
 			Timestamp: time.Now(),
 		}
 
+		aspectRatioXy := [2]int{}
+		if len(t.job.AspectRatioXY) == 2 && t.job.AspectRatioXY[0]*t.job.AspectRatioXY[1] != 0 {
+			aspectRatioXy[0] = t.job.AspectRatioXY[0]
+			aspectRatioXy[1] = t.job.AspectRatioXY[1]
+		} else {
+			aspectRatioXy[0] = 3
+			aspectRatioXy[1] = 1
+		}
+
 		var img image.Image
-		if img, err = containers.ProcessStage1(t.ctx, ctx.Config(), fileName, imgType); err != nil {
+		if img, err = containers.ProcessStage1(t.ctx, ctx.Config(), fileName, imgType, aspectRatioXy); err != nil {
 			goto completed
 		}
 
 		t.events <- TaskEvent{
+			JobID:     t.job.ID,
 			Type:      StageOneComplete,
 			Timestamp: time.Now(),
 		}
 
 		t.events <- TaskEvent{
+			JobID:     t.job.ID,
 			Type:      StageTwo,
 			Timestamp: time.Now(),
 		}
 
-		if err = containers.ProcessStage2(t.ctx, ctx.Config(), img); err != nil {
+		if err = containers.ProcessStage2(t.ctx, ctx.Config(), img, t.job.Sizes); err != nil {
 			goto completed
 		}
 
 		t.events <- TaskEvent{
+			JobID:     t.job.ID,
 			Type:      StageTwoComplete,
 			Timestamp: time.Now(),
 		}
 
 		t.events <- TaskEvent{
+			JobID:     t.job.ID,
 			Type:      StageThree,
 			Timestamp: time.Now(),
 		}
 
-		if err = containers.ProcessStage3(t.ctx, ctx.Config(), img); err != nil {
+		if t.files, err = containers.ProcessStage3(t.ctx, ctx.Config(), img, t.job.Sizes, t.job.Settings); err != nil {
 			goto completed
 		}
 
 		t.events <- TaskEvent{
+			JobID:     t.job.ID,
 			Type:      StageThreeComplete,
 			Timestamp: time.Now(),
 		}
@@ -286,11 +305,13 @@ completed:
 	t.cancel()
 	if err != nil {
 		t.events <- TaskEvent{
+			JobID:     t.job.ID,
 			Type:      Failed,
 			Timestamp: time.Now(),
 		}
 	} else {
 		t.events <- TaskEvent{
+			JobID:     t.job.ID,
 			Type:      Completed,
 			Timestamp: time.Now(),
 		}
@@ -303,6 +324,7 @@ func (t *Task) Stop() {
 	defer t.mtx.Unlock()
 
 	t.events <- TaskEvent{
+		JobID:     t.job.ID,
 		Type:      Stopped,
 		Timestamp: time.Now(),
 	}
@@ -317,6 +339,17 @@ func (t *Task) Done() <-chan struct{} {
 
 func (t *Task) Events() <-chan TaskEvent {
 	return t.events
+}
+
+func (t *Task) Files() []job.File {
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
+
+	if !t.completed || t.failed != nil {
+		return nil
+	}
+
+	return t.files
 }
 
 func (t *Task) Completed() bool {
@@ -341,6 +374,7 @@ func (t *Task) cleanup() error {
 	}
 
 	t.events <- TaskEvent{
+		JobID:     t.job.ID,
 		Type:      Cleaned,
 		Timestamp: time.Now(),
 	}

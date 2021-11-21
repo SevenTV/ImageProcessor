@@ -8,22 +8,22 @@ FROM ghcr.io/seventv/gifski:latest as gifski
 
 FROM golang:1.17.3-alpine as builder
 
-WORKDIR /tmp/emotes
+WORKDIR /tmp/images
 
 COPY . .
 
 ARG BUILDER
 ARG VERSION
 
-ENV EMOTES_BUILDER=${BUILDER}
-ENV EMOTES_VERSION=${VERSION}
+ENV IMAGES_BUILDER=${BUILDER}
+ENV IMAGES_VERSION=${VERSION}
 
 RUN apk add --no-cache make git && \
     make linux
 
 FROM ghcr.io/seventv/ffmpeg
 
-RUN apk add --no-cache vips-tools
+RUN apk add --no-cache vips-tools optipng
 
 COPY --from=libwebp /libwebp/cwebp /usr/bin
 COPY --from=libwebp /libwebp/dwebp /usr/bin
@@ -40,6 +40,6 @@ COPY --from=gifski /gifski/target/release/gifski /usr/bin
 
 WORKDIR /app
 
-COPY --from=builder /tmp/emotes/bin/emotes .
+COPY --from=builder /tmp/images/bin/images .
 
-ENTRYPOINT ["./emotes"]
+ENTRYPOINT ["./images"]

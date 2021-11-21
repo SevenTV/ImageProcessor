@@ -1,4 +1,4 @@
-module github.com/seventv/EmoteProcessor
+module github.com/seventv/ImageProcessor
 
 go 1.17
 

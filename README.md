@@ -1,4 +1,4 @@
-# EmoteConverter
+# ImageConverter
 
 The emote converter is a microservice used to convert uploaded raw files to the 7TV emote format.
 There are 3 stages to an emote upload.
@@ -46,7 +46,9 @@ Static Emotes
 
 ### Stage 2
 
-All PNG images are resized to be with in the following size ranges.
+All PNG images are resized to be with in the following size ranges defined by the job payload.
+
+The default size ranges are:
 
 | Name  | Height | Minimum Width | Maximum Width |
 | :---: | :----: | :-----------: | :-----------: |

@@ -9,6 +9,6 @@ rmq:
   update_queue_name: updates
 
 aws:
-  session_token: aws-session-token
+  access_token: aws-access-token
   secret_key: aws-secret-key
   region: us-west

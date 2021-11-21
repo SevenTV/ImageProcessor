@@ -1,6 +1,8 @@
 package task
 
-import "time"
+import (
+	"time"
+)
 
 type TaskEvent struct {
 	JobID     string

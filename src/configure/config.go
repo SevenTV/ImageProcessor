@@ -33,8 +33,13 @@ func New() *Config {
 	checkErr(config.MergeConfigMap(tmp.AllSettings()))
 
 	pflag.String("config", "config.yaml", "Config file location")
+
+	// inline convert
 	pflag.String("input", "", "A file to convert")
 	pflag.String("output", "", "A folder to dump outputs")
+	pflag.String("aspect_ratio", "3:1", "The aspect ratio for inline convert")
+	pflag.StringSlice("sizes", nil, "The sizes to convert the emotes to, name:width:height ie. `4x:384:128`")
+
 	pflag.Bool("noheader", false, "Disable the startup header")
 	pflag.Parse()
 	checkErr(config.BindPFlags(pflag.CommandLine))
@@ -63,8 +68,11 @@ type Config struct {
 	NoHeader bool   `json:"noheader,omitempty" mapstructure:"noheader,omitempty"`
 	NoLogs   bool   `json:"nologs,omitempty" mapstructure:"nologs,omitempty"`
 
-	Input  string `json:"input,omitempty" mapstructure:"input,omitempty"`
-	Output string `json:"output,omitempty" mapstructure:"output,omitempty"`
+	// inline convert
+	Input       string   `json:"input,omitempty" mapstructure:"input,omitempty"`
+	Output      string   `json:"output,omitempty" mapstructure:"output,omitempty"`
+	AspectRatio string   `json:"aspect_ratio,omitempty" mapstructure:"aspect_ratio,omitempty"`
+	Sizes       []string `json:"sizes,omitempty" mapstructure:"sizes,omitempty"`
 
 	// Aws
 	Aws struct {

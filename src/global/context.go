@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/seventv/EmoteProcessor/src/configure"
+	"github.com/seventv/ImageProcessor/src/configure"
 )
 
 type Context interface {

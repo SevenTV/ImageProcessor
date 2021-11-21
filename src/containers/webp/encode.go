@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"os/exec"
 	"path"
-
-	"github.com/seventv/EmoteProcessor/src/image"
 )
 
-func Encode(ctx context.Context, imgSize image.ImageSize, dir string, delays []int) error {
-	webpFile := path.Join(dir, fmt.Sprintf("%s.webp", imgSize))
+func Encode(ctx context.Context, name string, outName string, dir string, delays []int) error {
+	webpFile := path.Join(dir, fmt.Sprintf("%s.webp", outName))
 
 	if len(delays) == 1 {
-		return exec.CommandContext(ctx, "cwebp", "-z", "5", "-preset", "icon", "-sharpness", "3", path.Join(dir, "frames", string(imgSize), "dump_0000.png"), "-o", webpFile).Run()
+		return exec.CommandContext(ctx, "cwebp", "-z", "5", "-preset", "icon", "-sharpness", "3", path.Join(dir, "frames", name, "dump_0000.png"), "-o", webpFile).Run()
 	}
 
 	const argOffset = 11
@@ -32,7 +30,7 @@ func Encode(ctx context.Context, imgSize image.ImageSize, dir string, delays []i
 	for i, v := range delays {
 		args[argOffset+i*3] = "-d"
 		args[argOffset+i*3+1] = fmt.Sprint(v * 10)
-		args[argOffset+i*3+2] = path.Join(dir, "frames", string(imgSize), fmt.Sprintf("dump_%04d.png", i))
+		args[argOffset+i*3+2] = path.Join(dir, "frames", name, fmt.Sprintf("dump_%04d.png", i))
 	}
 
 	return exec.CommandContext(ctx, "img2webp", args...).Run()

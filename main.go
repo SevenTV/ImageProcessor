@@ -8,18 +8,19 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/bugsnag/panicwrap"
 	"github.com/davecgh/go-spew/spew"
 
-	"github.com/seventv/EmoteProcessor/src/aws"
-	"github.com/seventv/EmoteProcessor/src/configure"
-	"github.com/seventv/EmoteProcessor/src/global"
-	"github.com/seventv/EmoteProcessor/src/job"
-	"github.com/seventv/EmoteProcessor/src/rmq"
-	"github.com/seventv/EmoteProcessor/src/task"
+	"github.com/seventv/ImageProcessor/src/aws"
+	"github.com/seventv/ImageProcessor/src/configure"
+	"github.com/seventv/ImageProcessor/src/global"
+	"github.com/seventv/ImageProcessor/src/job"
+	"github.com/seventv/ImageProcessor/src/rmq"
+	"github.com/seventv/ImageProcessor/src/task"
 	"github.com/sirupsen/logrus"
 )
 
@@ -102,8 +103,53 @@ func main() {
 			PathFolder: config.Output,
 		})
 
+		ar := strings.Split(config.AspectRatio, ":")
+		if len(ar) != 2 {
+			logrus.Fatal("invalid aspect ratio: ", config.AspectRatio)
+		}
+
+		arXY := make([]int, 2)
+
+		arXY[0], err = strconv.Atoi(ar[0])
+		if err != nil {
+			logrus.Fatal("invalid aspect ratio: ", config.AspectRatio)
+		}
+		arXY[1], err = strconv.Atoi(ar[1])
+		if err != nil {
+			logrus.Fatal("invalid aspect ratio: ", config.AspectRatio)
+		}
+
+		sizes := map[string]job.ImageSize{}
+
+		for _, v := range config.Sizes {
+			splits := strings.Split(v, ":")
+			if len(splits) != 3 {
+				logrus.Fatal("invalid size: ", v)
+			}
+			size := job.ImageSize{}
+			size.Width, err = strconv.Atoi(splits[1])
+			if err != nil {
+				logrus.Fatal("invalid size: ", config.AspectRatio)
+			}
+			size.Height, err = strconv.Atoi(splits[2])
+			if err != nil {
+				logrus.Fatal("invalid size: ", config.AspectRatio)
+			}
+
+			sizes[splits[0]] = size
+		}
+
+		if len(sizes) == 0 {
+			logrus.Fatal("no sizes specified")
+		}
+
 		job := job.Job{
-			ID:                    "custom-task",
+			ID: "custom-task",
+
+			AspectRatioXY: arXY,
+			Settings:      job.AllSettings,
+			Sizes:         sizes,
+
 			RawProvider:           job.LocalProvider,
 			RawProviderDetails:    rawDetails,
 			ResultConsumer:        job.LocalConsumer,
@@ -120,6 +166,9 @@ func main() {
 		if task.Failed() != nil {
 			logrus.Fatal(task.Failed())
 		}
+
+		spew.Dump(task.Files())
+
 		cancel()
 
 	} else {

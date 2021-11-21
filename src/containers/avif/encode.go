@@ -10,24 +10,37 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/seventv/EmoteProcessor/src/configure"
-	"github.com/seventv/EmoteProcessor/src/image"
+	"github.com/seventv/ImageProcessor/src/configure"
 )
 
-func Encode(ctx context.Context, config *configure.Config, imgSize image.ImageSize, dir string, delays []int) error {
+func Encode(ctx context.Context, config *configure.Config, name string, outName string, dir string, delays []int) error {
 	// ffmpeg -y -i input.gif -vsync 1 -pix_fmt yuva444p -f yuv4mpegpipe -strict -1 - | avifenc --stdin output.avif
-	avifFile := path.Join(dir, fmt.Sprintf("%s.avif", string(imgSize)))
-	ffmpegCmd := exec.CommandContext(
-		ctx,
-		"ffmpeg",
-		"-f", "image2",
-		"-i", path.Join(dir, "frames", string(imgSize), "dump_%04d.png"),
-		"-vsync", "0",
-		"-f", "yuv4mpegpipe",
-		"-pix_fmt", "yuva444p",
-		"-strict", "-1",
-		"pipe:1",
-	)
+	avifFile := path.Join(dir, fmt.Sprintf("%s.avif", outName))
+	var ffmpegCmd *exec.Cmd
+	if len(delays) == 1 {
+		ffmpegCmd = exec.CommandContext(
+			ctx,
+			"ffmpeg",
+			"-i", path.Join(dir, "frames", name, "dump_0000.png"),
+			"-vsync", "0",
+			"-f", "yuv4mpegpipe",
+			"-pix_fmt", "yuva444p",
+			"-strict", "-1",
+			"pipe:1",
+		)
+	} else {
+		ffmpegCmd = exec.CommandContext(
+			ctx,
+			"ffmpeg",
+			"-f", "image2",
+			"-i", path.Join(dir, "frames", name, "dump_%04d.png"),
+			"-vsync", "0",
+			"-f", "yuv4mpegpipe",
+			"-pix_fmt", "yuva444p",
+			"-strict", "-1",
+			"pipe:1",
+		)
+	}
 
 	durations := make([]string, len(delays))
 	for i, v := range delays {
