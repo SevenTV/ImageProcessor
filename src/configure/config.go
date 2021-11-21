@@ -33,6 +33,8 @@ func New() *Config {
 	checkErr(config.MergeConfigMap(tmp.AllSettings()))
 
 	pflag.String("config", "config.yaml", "Config file location")
+	pflag.String("input", "", "A file to convert")
+	pflag.String("output", "", "A folder to dump outputs")
 	pflag.Bool("noheader", false, "Disable the startup header")
 	pflag.Parse()
 	checkErr(config.BindPFlags(pflag.CommandLine))
@@ -60,6 +62,9 @@ type Config struct {
 	Config   string `json:"config,omitempty" mapstructure:"config,omitempty"`
 	NoHeader bool   `json:"noheader,omitempty" mapstructure:"noheader,omitempty"`
 	NoLogs   bool   `json:"nologs,omitempty" mapstructure:"nologs,omitempty"`
+
+	Input  string `json:"input,omitempty" mapstructure:"input,omitempty"`
+	Output string `json:"output,omitempty" mapstructure:"output,omitempty"`
 
 	// Aws
 	Aws struct {

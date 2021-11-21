@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/signal"
 	"runtime"
@@ -11,10 +12,12 @@ import (
 	"time"
 
 	"github.com/bugsnag/panicwrap"
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/seventv/EmoteProcessor/src/aws"
 	"github.com/seventv/EmoteProcessor/src/configure"
 	"github.com/seventv/EmoteProcessor/src/global"
+	"github.com/seventv/EmoteProcessor/src/job"
 	"github.com/seventv/EmoteProcessor/src/rmq"
 	"github.com/seventv/EmoteProcessor/src/task"
 	"github.com/sirupsen/logrus"
@@ -65,18 +68,12 @@ func main() {
 
 	ctx := global.New(c, config)
 
-	ctx.Instances().Rmq = rmq.New(ctx)
-	if ctx.Config().Aws.Region != "" {
-		ctx.Instances().AwsS3 = aws.NewS3(ctx)
-	}
-
-	go task.Listen(ctx)
-
-	logrus.Info("running")
-
 	done := make(chan struct{})
 	go func() {
-		<-sig
+		select {
+		case <-sig:
+		case <-ctx.Done():
+		}
 		cancel()
 		go func() {
 			select {
@@ -88,12 +85,53 @@ func main() {
 
 		logrus.Info("shutting down")
 
-		ctx.Instances().Rmq.Shutdown()
+		if ctx.Instances().Rmq != nil {
+			ctx.Instances().Rmq.Shutdown()
+		}
 
 		ctx.Wait()
 
 		close(done)
 	}()
+
+	if config.Input != "" && config.Output != "" {
+		rawDetails, _ := json.Marshal(job.RawProviderDetailsLocal{
+			Path: config.Input,
+		})
+		resultDetails, _ := json.Marshal(job.ResultConsumerDetailsLocal{
+			PathFolder: config.Output,
+		})
+
+		job := job.Job{
+			ID:                    "custom-task",
+			RawProvider:           job.LocalProvider,
+			RawProviderDetails:    rawDetails,
+			ResultConsumer:        job.LocalConsumer,
+			ResultConsumerDetails: resultDetails,
+		}
+
+		task := task.New(c, job)
+
+		task.Start(ctx)
+		for event := range task.Events() {
+			spew.Dump(event)
+		}
+		<-task.Done()
+		if task.Failed() != nil {
+			logrus.Fatal(task.Failed())
+		}
+		cancel()
+
+	} else {
+		ctx.Instances().Rmq = rmq.New(ctx)
+		if ctx.Config().Aws.Region != "" {
+			ctx.Instances().AwsS3 = aws.NewS3(ctx)
+		}
+
+		go task.Listen(ctx)
+
+		logrus.Info("running")
+	}
 
 	<-done
 

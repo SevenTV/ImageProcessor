@@ -6,18 +6,23 @@ import (
 	"os/exec"
 	"path"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/seventv/EmoteProcessor/src/image"
 )
 
 func Encode(ctx context.Context, imgSize image.ImageSize, dir string, delays []int) error {
-	file := path.Join(dir, "frames", string(imgSize), "dump_%04d.png")
-
 	gifFile := path.Join(dir, fmt.Sprintf("%s.gif", imgSize))
-	if err := exec.CommandContext(ctx, "ffmpeg", "-f", "image2", "-i", file, "-filter_complex", "geq=a=255:r=if(lt(alpha(X\\,Y)\\,128)\\,0\\,r(X\\,Y)):g=if(lt(alpha(X\\,Y)\\,128)\\,255\\,if(eq(r(X\\,Y)*b(X\\,Y)\\,0)*eq(g(X\\,Y)\\,255)\\,250\\,g(X\\,Y))):b=if(lt(alpha(X\\,Y)\\,128)\\,0\\,b(X\\,Y)),split[s0][s1];[s0]palettegen=reserve_transparent=1:transparency_color=#010101[p];[s1][p]paletteuse=new=1", gifFile).Run(); err != nil {
-		return err
+
+	files := make([]string, len(delays)+2)
+	for i := range delays {
+		files[i] = path.Join(dir, "frames", string(imgSize), fmt.Sprintf("dump_%04d.png", i))
 	}
 
-	if err := exec.CommandContext(ctx, "gifsicle", "-b", "--colors=255", gifFile).Run(); err != nil {
+	files[len(files)-2] = "--output"
+	files[len(files)-1] = gifFile
+
+	if out, err := exec.CommandContext(ctx, "gifski", files...).CombinedOutput(); err != nil {
+		spew.Dump(out)
 		return err
 	}
 
@@ -33,7 +38,7 @@ func Encode(ctx context.Context, imgSize image.ImageSize, dir string, delays []i
 		return err
 	}
 
-	if err := exec.CommandContext(ctx, "gifsicle", "-b", "-U", "--disposal=previous", "--transparent=#00FF00", "-O3", gifFile).Run(); err != nil {
+	if err := exec.CommandContext(ctx, "gifsicle", "-b", "-O3", gifFile).Run(); err != nil {
 		return err
 	}
 

@@ -4,6 +4,8 @@ FROM ghcr.io/seventv/libavif:latest as libavif
 
 FROM ghcr.io/seventv/gifsicle:latest as gifsicle
 
+FROM ghcr.io/seventv/gifski:latest as gifski
+
 FROM golang:1.17.3-alpine as builder
 
 WORKDIR /tmp/emotes
@@ -34,9 +36,10 @@ COPY --from=libavif /libavif/avifdec /usr/bin
 COPY --from=libavif /libavif/avifenc /usr/bin
 
 COPY --from=gifsicle /gifsicle/gifsicle /usr/bin
+COPY --from=gifski /gifski/target/release/gifski /usr/bin
 
 WORKDIR /app
 
 COPY --from=builder /tmp/emotes/bin/emotes .
 
-CMD ["./emotes"]
+ENTRYPOINT ["./emotes"]

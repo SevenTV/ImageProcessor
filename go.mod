@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/aws/aws-sdk-go v1.42.0
 	github.com/bugsnag/panicwrap v1.3.4
+	github.com/davecgh/go-spew v1.1.1
 	github.com/google/uuid v1.3.0
 	github.com/json-iterator/go v1.1.12
 	github.com/sirupsen/logrus v1.8.1
@@ -14,10 +15,7 @@ require (
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 )
 
-require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/hashicorp/errwrap v1.0.0 // indirect
-)
+require github.com/hashicorp/errwrap v1.0.0 // indirect
 
 require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect

@@ -83,5 +83,7 @@ func Encode(ctx context.Context, config *configure.Config, imgSize image.ImageSi
 		r.Close()
 	}()
 
-	return multierror.Append(<-done, <-done).ErrorOrNil()
+	err = multierror.Append(<-done, <-done).ErrorOrNil()
+
+	return err
 }
