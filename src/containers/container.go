@@ -298,9 +298,9 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 
 	// AVIF
 	if (settings&job.EnableOutputAnimatedAVIF != 0 && isAnimated) || (settings&job.EnableOutputStaticAVIF != 0 && !isAnimated) {
-		for name := range sizes {
+		for name, size := range sizes {
 			wg.Add(1)
-			go func(name string) {
+			go func(name string, size job.ImageSize) {
 				defer wg.Done()
 				err := avif.Encode(ctx, config, name, name, img.Dir, img.Delays)
 				if err == nil {
@@ -315,19 +315,21 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 						ContentType: "image/avif",
 						Size:        int(info.Size()),
 						Animated:    isAnimated,
+						Width:       size.Height / int(img.Height) * int(img.Width),
+						Height:      size.Height,
 						TimeTaken:   time.Since(start),
 					}
 				}
 				errCh <- err
-			}(name)
+			}(name, size)
 		}
 	}
 
 	// WEBP
 	if (settings&job.EnableOutputAnimatedWEBP != 0 && isAnimated) || (settings&job.EnableOutputStaticWEBP != 0 && !isAnimated) {
-		for name := range sizes {
+		for name, size := range sizes {
 			wg.Add(1)
-			go func(name string) {
+			go func(name string, size job.ImageSize) {
 				defer wg.Done()
 				err := webp.Encode(ctx, name, name, img.Dir, img.Delays)
 				if err == nil {
@@ -342,19 +344,21 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 						ContentType: "image/webp",
 						Size:        int(info.Size()),
 						Animated:    isAnimated,
+						Width:       size.Height / int(img.Height) * int(img.Width),
+						Height:      size.Height,
 						TimeTaken:   time.Since(start),
 					}
 				}
 				errCh <- err
-			}(name)
+			}(name, size)
 		}
 	}
 
 	// GIF
 	if settings&job.EnableOutputAnimatedGIF != 0 && isAnimated {
-		for name := range sizes {
+		for name, size := range sizes {
 			wg.Add(1)
-			go func(name string) {
+			go func(name string, size job.ImageSize) {
 				defer wg.Done()
 				err := gif.Encode(ctx, name, name, img.Dir, img.Delays)
 				if err == nil {
@@ -369,19 +373,21 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 						ContentType: "image/gif",
 						Size:        int(info.Size()),
 						Animated:    isAnimated,
+						Width:       size.Height / int(img.Height) * int(img.Width),
+						Height:      size.Height,
 						TimeTaken:   time.Since(start),
 					}
 				}
 				errCh <- err
-			}(name)
+			}(name, size)
 		}
 	}
 
 	// PNG
 	if settings&job.EnableOutputStaticPNG != 0 && !isAnimated {
-		for name := range sizes {
+		for name, size := range sizes {
 			wg.Add(1)
-			go func(name string) {
+			go func(name string, size job.ImageSize) {
 				defer wg.Done()
 				err := png.Encode(ctx, path.Join(img.Dir, "frames", name, "dump_0000.png"), path.Join(img.Dir, fmt.Sprintf("%s.png", name)))
 				if err == nil {
@@ -396,20 +402,22 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 						ContentType: "image/png",
 						Size:        int(info.Size()),
 						Animated:    false,
+						Width:       size.Height / int(img.Height) * int(img.Width),
+						Height:      size.Height,
 						TimeTaken:   time.Since(start),
 					}
 				}
 				errCh <- err
-			}(name)
+			}(name, size)
 		}
 	}
 
 	// THUMBNAILS
 	if isAnimated && settings&job.EnableOutputAnimatedThumbanils != 0 {
-		for name := range sizes {
+		for name, size := range sizes {
 			if settings&job.EnableOutputStaticAVIF != 0 {
 				wg.Add(1)
-				go func(name string) {
+				go func(name string, size job.ImageSize) {
 					defer wg.Done()
 					err := avif.Encode(ctx, config, name, fmt.Sprintf("%s_static", name), img.Dir, img.Delays[:1])
 					if err == nil {
@@ -424,15 +432,17 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 							ContentType: "image/avif",
 							Size:        int(info.Size()),
 							Animated:    false,
+							Width:       size.Height / int(img.Height) * int(img.Width),
+							Height:      size.Height,
 							TimeTaken:   time.Since(start),
 						}
 					}
 					errCh <- err
-				}(name)
+				}(name, size)
 			}
 			if settings&job.EnableOutputStaticWEBP != 0 {
 				wg.Add(1)
-				go func(name string) {
+				go func(name string, size job.ImageSize) {
 					defer wg.Done()
 					err := webp.Encode(ctx, name, fmt.Sprintf("%s_static", name), img.Dir, img.Delays[:1])
 					if err == nil {
@@ -447,16 +457,18 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 							ContentType: "image/webp",
 							Size:        int(info.Size()),
 							Animated:    false,
+							Width:       size.Height / int(img.Height) * int(img.Width),
+							Height:      size.Height,
 							TimeTaken:   time.Since(start),
 						}
 					}
 					errCh <- err
-				}(name)
+				}(name, size)
 
 			}
 			if settings&job.EnableOutputStaticPNG != 0 {
 				wg.Add(1)
-				go func(name string) {
+				go func(name string, size job.ImageSize) {
 					defer wg.Done()
 					err := png.Encode(ctx, path.Join(img.Dir, "frames", name, "dump_0000.png"), path.Join(img.Dir, fmt.Sprintf("%s_static.png", name)))
 					if err == nil {
@@ -471,11 +483,13 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 							ContentType: "image/png",
 							Size:        int(info.Size()),
 							Animated:    false,
+							Width:       size.Height / int(img.Height) * int(img.Width),
+							Height:      size.Height,
 							TimeTaken:   time.Since(start),
 						}
 					}
 					errCh <- err
-				}(name)
+				}(name, size)
 			}
 		}
 	}

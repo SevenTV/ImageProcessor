@@ -37,6 +37,8 @@ type File struct {
 	ContentType string        `json:"content_type"`
 	Animated    bool          `json:"animated"`
 	TimeTaken   time.Duration `json:"time_taken"`
+	Width       int           `json:"width"`
+	Height      int           `json:"height"`
 }
 
 type ImageSize struct {
