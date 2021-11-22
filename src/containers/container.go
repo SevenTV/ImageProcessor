@@ -315,7 +315,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 						ContentType: "image/avif",
 						Size:        int(info.Size()),
 						Animated:    isAnimated,
-						Width:       size.Height / int(img.Height) * int(img.Width),
+						Width:       int(float64(size.Height) / float64(img.Height) * float64(img.Width)),
 						Height:      size.Height,
 						TimeTaken:   time.Since(start),
 					}
@@ -344,7 +344,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 						ContentType: "image/webp",
 						Size:        int(info.Size()),
 						Animated:    isAnimated,
-						Width:       size.Height / int(img.Height) * int(img.Width),
+						Width:       int(float64(size.Height) / float64(img.Height) * float64(img.Width)),
 						Height:      size.Height,
 						TimeTaken:   time.Since(start),
 					}
@@ -373,7 +373,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 						ContentType: "image/gif",
 						Size:        int(info.Size()),
 						Animated:    isAnimated,
-						Width:       size.Height / int(img.Height) * int(img.Width),
+						Width:       int(float64(size.Height) / float64(img.Height) * float64(img.Width)),
 						Height:      size.Height,
 						TimeTaken:   time.Since(start),
 					}
@@ -402,7 +402,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 						ContentType: "image/png",
 						Size:        int(info.Size()),
 						Animated:    false,
-						Width:       size.Height / int(img.Height) * int(img.Width),
+						Width:       int(float64(size.Height) / float64(img.Height) * float64(img.Width)),
 						Height:      size.Height,
 						TimeTaken:   time.Since(start),
 					}
@@ -432,7 +432,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 							ContentType: "image/avif",
 							Size:        int(info.Size()),
 							Animated:    false,
-							Width:       size.Height / int(img.Height) * int(img.Width),
+							Width:       int(float64(size.Height) / float64(img.Height) * float64(img.Width)),
 							Height:      size.Height,
 							TimeTaken:   time.Since(start),
 						}
@@ -457,7 +457,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 							ContentType: "image/webp",
 							Size:        int(info.Size()),
 							Animated:    false,
-							Width:       size.Height / int(img.Height) * int(img.Width),
+							Width:       int(float64(size.Height) / float64(img.Height) * float64(img.Width)),
 							Height:      size.Height,
 							TimeTaken:   time.Since(start),
 						}
@@ -483,7 +483,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 							ContentType: "image/png",
 							Size:        int(info.Size()),
 							Animated:    false,
-							Width:       size.Height / int(img.Height) * int(img.Width),
+							Width:       int(float64(size.Height) / float64(img.Height) * float64(img.Width)),
 							Height:      size.Height,
 							TimeTaken:   time.Since(start),
 						}
