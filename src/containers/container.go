@@ -25,6 +25,7 @@ import (
 	"github.com/seventv/ImageProcessor/src/containers/flv"
 	"github.com/seventv/ImageProcessor/src/containers/gif"
 	"github.com/seventv/ImageProcessor/src/containers/jpeg"
+	"github.com/seventv/ImageProcessor/src/containers/mov"
 	"github.com/seventv/ImageProcessor/src/containers/mp4"
 	"github.com/seventv/ImageProcessor/src/containers/png"
 	"github.com/seventv/ImageProcessor/src/containers/tiff"
@@ -66,6 +67,8 @@ func ToType(data []byte) (image.ImageType, error) {
 		return image.WEBM, nil
 	} else if webp.Test(data) {
 		return image.WEBP, nil
+	} else if mov.Test(data) {
+		return image.MOV, nil
 	} else if avif.Test(data) { // do this test last because its very loose
 		return image.AVIF, nil
 	}
@@ -120,7 +123,7 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 				delay[i] /= 10
 			}
 		}
-	case image.AVI, image.FLV, image.JPEG, image.MP4, image.PNG, image.TIFF, image.WEBM, image.AVIF:
+	case image.AVI, image.FLV, image.JPEG, image.MP4, image.PNG, image.TIFF, image.WEBM, image.AVIF, image.MOV:
 	default:
 		return image.Image{}, ErrUnknownFormat
 	}
@@ -133,7 +136,7 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 
 	// this will get all the frames.
 	switch imgType {
-	case image.AVI, image.FLV, image.GIF, image.JPEG, image.MP4, image.TIFF, image.WEBM, image.PNG:
+	case image.AVI, image.FLV, image.GIF, image.JPEG, image.MP4, image.TIFF, image.WEBM, image.PNG, image.MOV:
 		// ffmpeg
 		if out, err := exec.CommandContext(ctx, "ffmpeg", "-i", file, "-vsync", "0", "-f", "image2", "-start_number", "0", fmt.Sprintf("%s/%s", frameDir, "dump_%04d.png")).CombinedOutput(); err != nil {
 			return image.Image{}, fmt.Errorf("ffmpeg failed: %s : %s", err.Error(), out)

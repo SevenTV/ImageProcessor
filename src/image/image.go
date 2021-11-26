@@ -20,4 +20,5 @@ const (
 	TIFF ImageType = "tiff"
 	WEBM ImageType = "webm"
 	WEBP ImageType = "webp"
+	MOV  ImageType = "mov"
 )
