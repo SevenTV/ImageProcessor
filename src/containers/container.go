@@ -2,6 +2,8 @@ package containers
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"math"
@@ -76,7 +78,7 @@ func ToType(data []byte) (image.ImageType, error) {
 	return "", ErrUnknownFormat
 }
 
-func ProcessStage1(ctx context.Context, config *configure.Config, file string, imgType image.ImageType, aspectRatioXY [2]int) (image.Image, error) {
+func ProcessStage1(ctx context.Context, config *configure.Config, file string, imgType image.ImageType, aspectRatioXY [2]int) (*image.Image, error) {
 	// we need to get infomation about frames for a few types.
 	delay := []int{}
 	frameCount := -1
@@ -86,18 +88,18 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 		// golang
 		out, err := exec.CommandContext(ctx, "gifsicle", "-U", file, "-o", file).CombinedOutput()
 		if err != nil {
-			return image.Image{}, fmt.Errorf("gifsicle failed: %s : %s", err.Error(), out)
+			return nil, fmt.Errorf("gifsicle failed: %s : %s", err.Error(), out)
 		}
 
 		f, err := os.OpenFile(file, os.O_RDONLY, 0600)
 		if err != nil {
-			return image.Image{}, fmt.Errorf("read file failed: %s", err.Error())
+			return nil, fmt.Errorf("read file failed: %s", err.Error())
 		}
 		defer f.Close()
 
 		decGIF, err := nGif.DecodeAll(f)
 		if err != nil {
-			return image.Image{}, err
+			return nil, err
 		}
 
 		delay = decGIF.Delay
@@ -107,7 +109,7 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 		// avifdec -i
 		data, err := exec.CommandContext(ctx, "webpmux", "-info", file).CombinedOutput()
 		if err != nil {
-			return image.Image{}, fmt.Errorf("webpmux failed: %s : %s", err.Error(), data)
+			return nil, fmt.Errorf("webpmux failed: %s : %s", err.Error(), data)
 		}
 
 		matches := webpMuxRe.FindAllStringSubmatch(utils.B2S(data), -1)
@@ -125,13 +127,13 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 		}
 	case image.AVI, image.FLV, image.JPEG, image.MP4, image.PNG, image.TIFF, image.WEBM, image.AVIF, image.MOV:
 	default:
-		return image.Image{}, ErrUnknownFormat
+		return nil, ErrUnknownFormat
 	}
 
 	dir := path.Dir(file)
 	frameDir := path.Join(dir, "frames")
 	if err := os.MkdirAll(frameDir, 0700); err != nil {
-		return image.Image{}, fmt.Errorf("mkdir failed: %s", err.Error())
+		return nil, fmt.Errorf("mkdir failed: %s", err.Error())
 	}
 
 	// this will get all the frames.
@@ -139,7 +141,7 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 	case image.AVI, image.FLV, image.GIF, image.JPEG, image.MP4, image.TIFF, image.WEBM, image.PNG, image.MOV:
 		// ffmpeg
 		if out, err := exec.CommandContext(ctx, "ffmpeg", "-i", file, "-vsync", "0", "-f", "image2", "-start_number", "0", fmt.Sprintf("%s/%s", frameDir, "dump_%04d.png")).CombinedOutput(); err != nil {
-			return image.Image{}, fmt.Errorf("ffmpeg failed: %s : %s", err.Error(), out)
+			return nil, fmt.Errorf("ffmpeg failed: %s : %s", err.Error(), out)
 		}
 		// we need to count them here tho.
 		if frameCount == -1 {
@@ -154,33 +156,33 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 				}
 				return nil
 			}); err != nil {
-				return image.Image{}, fmt.Errorf("filepath walk failed: %s", err.Error())
+				return nil, fmt.Errorf("filepath walk failed: %s", err.Error())
 			}
 			delay = make([]int, frameCount)
 			if frameCount == 0 {
-				return image.Image{}, ErrUnknown
+				return nil, ErrUnknown
 			}
 			if frameCount > 1 {
 				// we need to calculate the frame timings, by looking at the old fps.
 				// :)
 				fpsData, err := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", "v", "-of", "default=noprint_wrappers=1:nokey=1", "-show_entries", "stream=r_frame_rate", file).CombinedOutput()
 				if err != nil {
-					return image.Image{}, fmt.Errorf("ffprobe failed: %s : %s", err.Error(), fpsData)
+					return nil, fmt.Errorf("ffprobe failed: %s : %s", err.Error(), fpsData)
 				}
 
 				fpsSplits := strings.Split(utils.B2S(fpsData), "/")
 				if len(fpsSplits) != 2 {
-					return image.Image{}, ErrBadResponseFFprobe
+					return nil, ErrBadResponseFFprobe
 				}
 
 				fpsNum, err := strconv.Atoi(strings.TrimSpace(fpsSplits[0]))
 				if err != nil {
-					return image.Image{}, err
+					return nil, err
 				}
 
 				fpsDenom, err := strconv.Atoi(strings.TrimSpace(fpsSplits[1]))
 				if err != nil {
-					return image.Image{}, err
+					return nil, err
 				}
 
 				d := int(math.Floor(100 / (float64(fpsNum) / float64(fpsDenom))))
@@ -206,11 +208,11 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 			file,
 			fmt.Sprintf("%s/dump_%%04d.png", frameDir),
 		).CombinedOutput(); err != nil {
-			return image.Image{}, fmt.Errorf("avifdump failed: %s : %s", err.Error(), out)
+			return nil, fmt.Errorf("avifdump failed: %s : %s", err.Error(), out)
 		} else {
 			matches := avifDumpRe.FindAllStringSubmatch(utils.B2S(out), -1)
 			if len(matches) == 0 {
-				return image.Image{}, ErrBadResponseAvifDec
+				return nil, ErrBadResponseAvifDec
 			}
 
 			frameCount = len(matches)
@@ -223,10 +225,10 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 	case image.WEBP:
 		// anim_dump
 		if out, err := exec.CommandContext(ctx, "anim_dump", "-folder", frameDir, file).CombinedOutput(); err != nil {
-			return image.Image{}, fmt.Errorf("anim_dump failed: %s : %s", err.Error(), out)
+			return nil, fmt.Errorf("anim_dump failed: %s : %s", err.Error(), out)
 		}
 	default:
-		return image.Image{}, ErrUnknownFormat
+		return nil, ErrUnknownFormat
 	}
 
 	out, err := exec.CommandContext(ctx,
@@ -240,22 +242,22 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 		"-y", fmt.Sprintf("%s/%s", frameDir, "dump_%04d.png"),
 	).CombinedOutput()
 	if err != nil {
-		return image.Image{}, fmt.Errorf("ffmpeg failed: %s : %s", err.Error(), out)
+		return nil, fmt.Errorf("ffmpeg failed: %s : %s", err.Error(), out)
 	}
 
 	// we now at this point know how many frames are in the emote and also the timings.
 	pngFile, err := os.OpenFile(path.Join(frameDir, "dump_0000.png"), os.O_RDONLY, 0600)
 	if err != nil {
-		return image.Image{}, fmt.Errorf("open file failed: %s", err.Error())
+		return nil, fmt.Errorf("open file failed: %s", err.Error())
 	}
 	defer pngFile.Close()
 
 	pngCfg, err := nPng.DecodeConfig(pngFile)
 	if err != nil {
-		return image.Image{}, err
+		return nil, err
 	}
 
-	return image.Image{
+	return &image.Image{
 		Dir:    dir,
 		Width:  uint16(pngCfg.Width),
 		Height: uint16(pngCfg.Height),
@@ -263,7 +265,7 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 	}, nil
 }
 
-func ProcessStage2(ctx context.Context, config *configure.Config, img image.Image, sizes map[string]job.ImageSize) error {
+func ProcessStage2(ctx context.Context, config *configure.Config, img *image.Image, sizes map[string]job.ImageSize) error {
 	for v := range sizes {
 		dir := path.Join(img.Dir, "frames", v)
 		if err := os.MkdirAll(dir, 0700); err != nil {
@@ -274,9 +276,59 @@ func ProcessStage2(ctx context.Context, config *configure.Config, img image.Imag
 	errCh := make(chan error, 5)
 	defer close(errCh)
 
+	// At this point we need to check each frame on the image to find duplicate frames so that we can skip processing on these duplicated frames
+	files := map[string]string{}
+	hashes := make([]string, len(img.Delays))
+	frames := make([]string, len(img.Delays))
+	hash := sha256.New()
+	for i := range img.Delays {
+		frames[i] = path.Join(img.Dir, "frames", fmt.Sprintf("dump_%04d.png", i))
+		data, err := os.ReadFile(frames[i])
+		if err != nil {
+			return err
+		}
+
+		hash.Reset()
+		hash.Write(data)
+		hashes[i] = hex.EncodeToString(hash.Sum(nil))
+		files[hashes[i]] = frames[i]
+	}
+
+	newFrames := make([]string, len(img.Delays))
+	newDelays := make([]int, len(img.Delays))
+
+	r := -1
+
+	previousHash := ""
+	for i := range hashes {
+		if previousHash == hashes[i] {
+			newDelays[r] += img.Delays[i]
+		} else {
+			r++
+			newFrames[r] = path.Base(files[hashes[i]])
+			newDelays[r] += img.Delays[i]
+			previousHash = hashes[i]
+		}
+	}
+
+	img.Delays = newDelays[:r+1]
+	img.Frames = newFrames[:r+1]
+
+	mp := map[string]bool{}
+	for _, v := range img.Frames {
+		mp[v] = true
+	}
+	uniqueFrames := make([]string, len(mp))
+
+	r = 0
+	for k := range mp {
+		uniqueFrames[r] = k
+		r++
+	}
+
 	for name, size := range sizes {
 		go func(name string, size job.ImageSize) {
-			errCh <- png.Edit(ctx, name, img.Dir, uint16(size.Width), uint16(size.Height), len(img.Delays))
+			errCh <- png.Edit(ctx, uniqueFrames, img.Dir, name, uint16(size.Width), uint16(size.Height))
 		}(name, size)
 	}
 
@@ -288,7 +340,7 @@ func ProcessStage2(ctx context.Context, config *configure.Config, img image.Imag
 	return err
 }
 
-func ProcessStage3(ctx context.Context, config *configure.Config, img image.Image, sizes map[string]job.ImageSize, settings uint64) ([]job.File, error) {
+func ProcessStage3(ctx context.Context, config *configure.Config, img *image.Image, sizes map[string]job.ImageSize, settings uint64) ([]job.File, error) {
 	errCh := make(chan error)
 
 	wg := sync.WaitGroup{}
@@ -305,7 +357,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 			wg.Add(1)
 			go func(name string, size job.ImageSize) {
 				defer wg.Done()
-				err := avif.Encode(ctx, config, name, name, img.Dir, img.Delays)
+				err := avif.Encode(ctx, config, name, name, img.Dir, img.Frames, img.Delays)
 				if err == nil {
 					info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s.avif", name)))
 					if err != nil {
@@ -334,7 +386,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 			wg.Add(1)
 			go func(name string, size job.ImageSize) {
 				defer wg.Done()
-				err := webp.Encode(ctx, name, name, img.Dir, img.Delays)
+				err := webp.Encode(ctx, name, name, img.Dir, img.Frames, img.Delays)
 				if err == nil {
 					info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s.webp", name)))
 					if err != nil {
@@ -363,7 +415,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 			wg.Add(1)
 			go func(name string, size job.ImageSize) {
 				defer wg.Done()
-				err := gif.Encode(ctx, name, name, img.Dir, img.Delays)
+				err := gif.Encode(ctx, name, name, img.Dir, img.Frames, img.Delays)
 				if err == nil {
 					info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s.gif", name)))
 					if err != nil {
@@ -392,7 +444,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 			wg.Add(1)
 			go func(name string, size job.ImageSize) {
 				defer wg.Done()
-				err := png.Encode(ctx, path.Join(img.Dir, "frames", name, "dump_0000.png"), path.Join(img.Dir, fmt.Sprintf("%s.png", name)))
+				err := png.Encode(ctx, path.Join(img.Dir, "frames", name, img.Frames[0]), path.Join(img.Dir, fmt.Sprintf("%s.png", name)))
 				if err == nil {
 					info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s.png", name)))
 					if err != nil {
@@ -422,7 +474,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 				wg.Add(1)
 				go func(name string, size job.ImageSize) {
 					defer wg.Done()
-					err := avif.Encode(ctx, config, name, fmt.Sprintf("%s_static", name), img.Dir, img.Delays[:1])
+					err := avif.Encode(ctx, config, name, fmt.Sprintf("%s_static", name), img.Dir, img.Frames, img.Delays[:1])
 					if err == nil {
 						info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s_static.avif", name)))
 						if err != nil {
@@ -447,7 +499,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 				wg.Add(1)
 				go func(name string, size job.ImageSize) {
 					defer wg.Done()
-					err := webp.Encode(ctx, name, fmt.Sprintf("%s_static", name), img.Dir, img.Delays[:1])
+					err := webp.Encode(ctx, name, fmt.Sprintf("%s_static", name), img.Dir, img.Frames, img.Delays[:1])
 					if err == nil {
 						info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s_static.webp", name)))
 						if err != nil {
@@ -473,7 +525,7 @@ func ProcessStage3(ctx context.Context, config *configure.Config, img image.Imag
 				wg.Add(1)
 				go func(name string, size job.ImageSize) {
 					defer wg.Done()
-					err := png.Encode(ctx, path.Join(img.Dir, "frames", name, "dump_0000.png"), path.Join(img.Dir, fmt.Sprintf("%s_static.png", name)))
+					err := png.Encode(ctx, path.Join(img.Dir, "frames", name, img.Frames[0]), path.Join(img.Dir, fmt.Sprintf("%s_static.png", name)))
 					if err == nil {
 						info, err := os.Stat(path.Join(img.Dir, fmt.Sprintf("%s_static.png", name)))
 						if err != nil {

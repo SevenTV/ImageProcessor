@@ -80,6 +80,17 @@ func (t *Task) Start(ctx global.Context) {
 func (t *Task) start(ctx global.Context) {
 	defer close(t.events)
 	defer func() {
+		if err := recover(); err != nil && t.failed == nil {
+			logrus.Error("panic to cleanup: ", err)
+			t.completed = true
+			t.failed = fmt.Errorf("%v", err)
+			t.cancel()
+			t.events <- TaskEvent{
+				JobID:     t.job.ID,
+				Type:      Failed,
+				Timestamp: time.Now(),
+			}
+		}
 		if err := t.cleanup(); err != nil {
 			logrus.Error("failed to cleanup: ", err)
 		}
@@ -169,7 +180,7 @@ func (t *Task) start(ctx global.Context) {
 			aspectRatioXy[1] = 1
 		}
 
-		var img image.Image
+		var img *image.Image
 		if img, err = containers.ProcessStage1(t.ctx, ctx.Config(), fileName, imgType, aspectRatioXy); err != nil {
 			goto completed
 		}
@@ -316,7 +327,6 @@ completed:
 			Timestamp: time.Now(),
 		}
 	}
-
 }
 
 func (t *Task) Stop() {

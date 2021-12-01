@@ -7,10 +7,10 @@ import (
 	"path"
 )
 
-func Edit(ctx context.Context, name string, dir string, width uint16, height uint16, frameCount int) error {
-	files := make([]string, frameCount+4)
-	for i := 0; i < frameCount; i++ {
-		files[i+4] = path.Join(dir, "frames", fmt.Sprintf("dump_%04d.png", i))
+func Edit(ctx context.Context, frames []string, dir string, name string, width uint16, height uint16) error {
+	files := make([]string, len(frames)+4)
+	for i := 0; i < len(frames); i++ {
+		files[i+4] = path.Join(dir, "frames", frames[i])
 	}
 	files[0] = "-o"
 	files[1] = path.Join(name, "%s.png")

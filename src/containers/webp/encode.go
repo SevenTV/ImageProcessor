@@ -7,11 +7,11 @@ import (
 	"path"
 )
 
-func Encode(ctx context.Context, name string, outName string, dir string, delays []int) error {
+func Encode(ctx context.Context, name string, outName string, dir string, frames []string, delays []int) error {
 	webpFile := path.Join(dir, fmt.Sprintf("%s.webp", outName))
 
 	if len(delays) == 1 {
-		out, err := exec.CommandContext(ctx, "cwebp", "-z", "5", "-preset", "icon", "-sharpness", "3", path.Join(dir, "frames", name, "dump_0000.png"), "-o", webpFile).CombinedOutput()
+		out, err := exec.CommandContext(ctx, "cwebp", "-z", "5", "-preset", "icon", "-sharpness", "3", path.Join(dir, "frames", name, frames[0]), "-o", webpFile).CombinedOutput()
 		if err != nil {
 			err = fmt.Errorf("cwebp failed: %s : %s", err.Error(), out)
 		}
@@ -35,7 +35,7 @@ func Encode(ctx context.Context, name string, outName string, dir string, delays
 	for i, v := range delays {
 		args[argOffset+i*3] = "-d"
 		args[argOffset+i*3+1] = fmt.Sprint(v * 10)
-		args[argOffset+i*3+2] = path.Join(dir, "frames", name, fmt.Sprintf("dump_%04d.png", i))
+		args[argOffset+i*3+2] = path.Join(dir, "frames", name, frames[i])
 	}
 
 	out, err := exec.CommandContext(ctx, "img2webp", args...).CombinedOutput()

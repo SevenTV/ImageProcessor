@@ -5,6 +5,7 @@ type Image struct {
 	Width  uint16
 	Height uint16
 	Delays []int
+	Frames []string
 }
 
 type ImageType string

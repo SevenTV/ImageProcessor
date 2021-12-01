@@ -7,22 +7,24 @@ import (
 	"path"
 )
 
-func Encode(ctx context.Context, name string, outName string, dir string, delays []int) error {
+func Encode(ctx context.Context, name string, outName string, dir string, frames []string, delays []int) error {
 	gifFile := path.Join(dir, fmt.Sprintf("%s.gif", outName))
 
-	files := make([]string, len(delays)+2)
+	args := make([]string, len(delays)+2)
+	dlay := make([]string, len(delays))
 	for i := range delays {
-		files[i] = path.Join(dir, "frames", name, fmt.Sprintf("dump_%04d.png", i))
+		dlay[i] = fmt.Sprint(delays[i])
+		args[i] = path.Join(dir, "frames", name, frames[i])
 	}
 
-	files[len(files)-2] = "--output"
-	files[len(files)-1] = gifFile
+	args[len(args)-2] = "--output"
+	args[len(args)-1] = gifFile
 
-	if out, err := exec.CommandContext(ctx, "gifski", files...).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(ctx, "gifski", args...).CombinedOutput(); err != nil {
 		return fmt.Errorf("gifski failed: %s : %s", err.Error(), out)
 	}
 
-	args := make([]string, len(delays)*2+2)
+	args = make([]string, len(delays)*2+2)
 	args[0] = "-b"
 	args[1] = gifFile
 	for i, v := range delays {

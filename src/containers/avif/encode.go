@@ -14,7 +14,7 @@ import (
 	"github.com/seventv/ImageProcessor/src/configure"
 )
 
-func Encode(ctx context.Context, config *configure.Config, name string, outName string, dir string, delays []int) error {
+func Encode(ctx context.Context, config *configure.Config, name string, outName string, dir string, frames []string, delays []int) error {
 	// ffmpeg -y -i input.gif -vsync 1 -pix_fmt yuva444p -f yuv4mpegpipe -strict -1 - | avifenc --stdin output.avif
 	avifFile := path.Join(dir, fmt.Sprintf("%s.avif", outName))
 	var ffmpegCmd *exec.Cmd
@@ -22,7 +22,7 @@ func Encode(ctx context.Context, config *configure.Config, name string, outName 
 		ffmpegCmd = exec.CommandContext(
 			ctx,
 			"ffmpeg",
-			"-i", path.Join(dir, "frames", name, "dump_0000.png"),
+			"-i", path.Join(dir, "frames", name, frames[0]),
 			"-vsync", "0",
 			"-f", "yuv4mpegpipe",
 			"-pix_fmt", "yuva444p",
@@ -30,11 +30,14 @@ func Encode(ctx context.Context, config *configure.Config, name string, outName 
 			"pipe:1",
 		)
 	} else {
+		newFrames := make([]string, len(frames))
+		for i, v := range frames {
+			newFrames[i] = path.Join(dir, "frames", name, v)
+		}
 		ffmpegCmd = exec.CommandContext(
 			ctx,
 			"ffmpeg",
-			"-f", "image2",
-			"-i", path.Join(dir, "frames", name, "dump_%04d.png"),
+			"-i", fmt.Sprintf("concat:%s", strings.Join(newFrames, "|")),
 			"-vsync", "0",
 			"-f", "yuv4mpegpipe",
 			"-pix_fmt", "yuva444p",
@@ -84,12 +87,12 @@ func Encode(ctx context.Context, config *configure.Config, name string, outName 
 
 	err := avifEncCmd.Start()
 	if err != nil {
-		return err
+		return fmt.Errorf("avifenc failed: %s : %s : %s", err.Error(), ffmpegOut.String(), avifEncOut.String())
 	}
 
 	err = ffmpegCmd.Start()
 	if err != nil {
-		return err
+		return fmt.Errorf("ffmpeg failed: %s : %s : %s", err.Error(), ffmpegOut.String(), avifEncOut.String())
 	}
 
 	done := make(chan error)
