@@ -2,6 +2,8 @@ package configure
 
 import (
 	"bytes"
+	"reflect"
+	"strings"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
@@ -44,22 +46,45 @@ func New() *Config {
 	pflag.Parse()
 	checkErr(config.BindPFlags(pflag.CommandLine))
 
+	// File
 	config.SetConfigFile(config.GetString("config"))
 	if err := config.ReadInConfig(); err == nil {
 		checkErr(config.MergeInConfig())
 	}
 
-	cfg := Config{}
+	BindEnvs(config, Config{})
 
-	config.SetEnvPrefix("7TV")
-	config.AllowEmptyEnv(true)
+	// Environment
 	config.AutomaticEnv()
+	config.SetEnvPrefix("IMAGE")
+	config.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	config.AllowEmptyEnv(true)
 
+	cfg := Config{}
 	checkErr(config.Unmarshal(&cfg))
 
 	initLogging(cfg.LogLevel)
 
 	return &cfg
+}
+
+func BindEnvs(config *viper.Viper, iface interface{}, parts ...string) {
+	ifv := reflect.ValueOf(iface)
+	ift := reflect.TypeOf(iface)
+	for i := 0; i < ift.NumField(); i++ {
+		v := ifv.Field(i)
+		t := ift.Field(i)
+		tv, ok := t.Tag.Lookup("mapstructure")
+		if !ok {
+			continue
+		}
+		switch v.Kind() {
+		case reflect.Struct:
+			BindEnvs(config, v.Interface(), append(parts, tv)...)
+		default:
+			config.BindEnv(strings.Join(append(parts, tv), "."))
+		}
+	}
 }
 
 type Config struct {
