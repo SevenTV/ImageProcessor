@@ -82,7 +82,7 @@ func BindEnvs(config *viper.Viper, iface interface{}, parts ...string) {
 		case reflect.Struct:
 			BindEnvs(config, v.Interface(), append(parts, tv)...)
 		default:
-			config.BindEnv(strings.Join(append(parts, tv), "."))
+			_ = config.BindEnv(strings.Join(append(parts, tv), "."))
 		}
 	}
 }
