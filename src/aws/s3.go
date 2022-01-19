@@ -22,8 +22,10 @@ var (
 
 func NewS3(ctx global.Context) global.AwsS3 {
 	sess, err := session.NewSession(&aws.Config{
-		Credentials: credentials.NewStaticCredentials(ctx.Config().Aws.AccessToken, ctx.Config().Aws.SecretKey, ""),
-		Region:      aws.String(ctx.Config().Aws.Region),
+		Credentials:      credentials.NewStaticCredentials(ctx.Config().Aws.AccessToken, ctx.Config().Aws.SecretKey, ""),
+		Region:           aws.String(ctx.Config().Aws.Region),
+		S3ForcePathStyle: aws.Bool(true),
+		Endpoint:         aws.String(ctx.Config().Aws.Endpoint),
 	})
 	if err != nil {
 		logrus.Fatal("failed to configure aws: ", err)
@@ -71,7 +73,7 @@ func (a *AwsS3Instance) DownloadFile(ctx context.Context, bucket, key string, fi
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to upload file, %v", err)
+		return fmt.Errorf("failed to download file, %v", err)
 	}
 
 	logrus.Debugf("%d bytes downloaded from %s %s", n, bucket, key)

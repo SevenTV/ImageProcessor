@@ -104,6 +104,7 @@ type Config struct {
 		AccessToken string `json:"access_token,omitempty" mapstructure:"access_token,omitempty"`
 		SecretKey   string `json:"secret_key,omitempty" mapstructure:"secret_key,omitempty"`
 		Region      string `json:"region,omitempty" mapstructure:"region,omitempty"`
+		Endpoint    string `json:"endpoint,omitempty" mapstructure:"endpoint,omitempty"`
 	} `json:"aws,omitempty" mapstructure:"aws,omitempty"`
 
 	Rmq struct {
