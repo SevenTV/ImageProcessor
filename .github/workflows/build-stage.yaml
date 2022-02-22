@@ -2,7 +2,7 @@ name: Build Image Processor
 
 on:
   push:
-    branches: [stage]
+    branches: [dev, stage]
 
   workflow_dispatch:
 
