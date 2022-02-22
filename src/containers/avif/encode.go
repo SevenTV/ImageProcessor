@@ -63,6 +63,7 @@ func Encode(ctx context.Context, config *configure.Config, name string, outName 
 		ctx,
 		"avifenc",
 		"--stdin-durations", strconv.Itoa(len(delays)), strings.Join(durations, ","),
+		"--keyframe", fmt.Sprint(len(frames)/4),
 		"--speed", "3",
 		"--timescale", "100",
 		"--min", "10",

@@ -236,7 +236,7 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 		"-f", "image2",
 		"-start_number", "0",
 		"-i", fmt.Sprintf("%s/%s", frameDir, "dump_%04d.png"),
-		"-vf", fmt.Sprintf("format=rgba,pad=h=if(gt(iw/ih\\,%d)\\,iw/%d\\,ih):w=if(lt(iw/ih\\,%d)\\,ih/%d\\,iw):x=0:y=(oh-ih):color=#00000000", aspectRatioXY[0], aspectRatioXY[0], aspectRatioXY[1], aspectRatioXY[1]),
+		"-vf", fmt.Sprintf("format=rgba,pad=h=if(gt(iw/ih\\,%d)\\,iw/%d\\,ih):x=0:y=(oh-ih):color=#00000000", aspectRatioXY[0], aspectRatioXY[0]),
 		"-f", "image2",
 		"-start_number", "0",
 		"-y", fmt.Sprintf("%s/%s", frameDir, "dump_%04d.png"),

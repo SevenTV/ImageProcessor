@@ -1,12 +1,12 @@
-FROM ghcr.io/seventv/libwebp:latest as libwebp
+FROM harbor.disembark.dev/libs/libwebp:latest as libwebp
 
-FROM ghcr.io/seventv/libavif:latest as libavif
+FROM harbor.disembark.dev/libs/libavif:latest as libavif
 
-FROM ghcr.io/seventv/gifsicle:latest as gifsicle
+FROM harbor.disembark.dev/libs/gifsicle:latest as gifsicle
 
-FROM ghcr.io/seventv/gifski:latest as gifski
+FROM harbor.disembark.dev/libs/gifski:latest as gifski
 
-FROM golang:1.17.3-alpine as builder
+FROM golang:1.17.7 as builder
 
 WORKDIR /tmp/images
 
@@ -18,10 +18,14 @@ ARG VERSION
 ENV IMAGES_BUILDER=${BUILDER}
 ENV IMAGES_VERSION=${VERSION}
 
-RUN apk add --no-cache make git && \
+RUN apt-get update && \
+    apt-get install -y \
+        make \
+        git && \
+    apt-get clean && \
     make linux
 
-FROM ghcr.io/seventv/ffmpeg
+FROM harbor.disembark.dev/libs/ffmpeg:latest
 
 RUN apk add --no-cache optipng vips-tools
 

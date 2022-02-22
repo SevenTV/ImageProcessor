@@ -16,7 +16,7 @@ else
 endif
 
 linux:
-	GOOS=linux GOARCH=amd64 go build -v -ldflags "-X 'main.Version=${VERSION}' -X 'main.Unix=$(shell date +%s)' -X 'main.User=${BUILDER}'" -o bin/images .
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -ldflags "-X 'main.Version=${VERSION}' -X 'main.Unix=$(shell date +%s)' -X 'main.User=${BUILDER}'" -o bin/images .
 
 lint:
 	staticcheck ./...
@@ -24,9 +24,9 @@ lint:
 	golangci-lint run
 
 deps:
-	go mod download
-	go install honnef.co/go/tools/cmd/staticcheck@latest
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	CGO_ENABLED=0 go mod download
+	CGO_ENABLED=0 go install honnef.co/go/tools/cmd/staticcheck@latest
+	CGO_ENABLED=0 go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 test:
 	go test -count=1 -cover ./...
