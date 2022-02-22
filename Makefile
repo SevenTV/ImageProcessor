@@ -22,8 +22,10 @@ lint:
 	staticcheck ./...
 	go vet ./...
 	golangci-lint run
+	yarn prettier --write .
 
 deps:
+	yarn
 	CGO_ENABLED=0 go mod download
 	CGO_ENABLED=0 go install honnef.co/go/tools/cmd/staticcheck@latest
 	CGO_ENABLED=0 go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest

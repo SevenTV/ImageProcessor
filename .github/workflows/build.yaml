@@ -50,34 +50,34 @@ jobs:
       - build
 
     steps:
-        # Checkout repository
-        - uses: actions/checkout@v2
+      # Checkout repository
+      - uses: actions/checkout@v2
 
-        # Clone k8s repository
-        - uses: actions/checkout@v2
-          with:
-            repository: SevenTV/k8s
-            path: k8s
-            token: ${{ secrets.SERVICE_PAT }}
+      # Clone k8s repository
+      - uses: actions/checkout@v2
+        with:
+          repository: SevenTV/k8s
+          path: k8s
+          token: ${{ secrets.SERVICE_PAT }}
 
-        # Deploy to k8s
-        - name: Install kubectl&
-          uses: azure/setup-kubectl@v1
+      # Deploy to k8s
+      - name: Install kubectl&
+        uses: azure/setup-kubectl@v1
 
-        - name: Apply Deployment & Rollout
-          env:
-            KUBE_CONFIG_DATA: ${{ secrets.KUBECONFIG }}
-            KUBE_RESOURCE: deploy
-            KUBE_IMAGE_PATCH: >-
-              [
-                { "op": "replace", "path": "/spec/template/spec/containers/0/image", "value": "harbor.disembark.dev/7tv/image_processor:${{ github.sha }}" }
-              ]
-          run: |
-            mkdir -p ~/.kube
-            (echo $KUBE_CONFIG_DATA | base64 -d) >> ~/.kube/config
-            kubectl config use-context autodeploy@SevenTV
+      - name: Apply Deployment & Rollout
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBECONFIG }}
+          KUBE_RESOURCE: deploy
+          KUBE_IMAGE_PATCH: >-
+            [
+              { "op": "replace", "path": "/spec/template/spec/containers/0/image", "value": "harbor.disembark.dev/7tv/image_processor:${{ github.sha }}" }
+            ]
+        run: |
+          mkdir -p ~/.kube
+          (echo $KUBE_CONFIG_DATA | base64 -d) >> ~/.kube/config
+          kubectl config use-context autodeploy@SevenTV
 
-            kubectl apply -f k8s/cluster/7tv/images.yaml
-            kubectl patch $KUBE_RESOURCE seventv-images --type="json" -p="$KUBE_IMAGE_PATCH"
+          kubectl apply -f k8s/cluster/7tv/images.yaml
+          kubectl patch $KUBE_RESOURCE seventv-images --type="json" -p="$KUBE_IMAGE_PATCH"
 
-            kubectl rollout restart -n app $KUBE_RESOURCE/seventv-images
+          kubectl rollout restart -n app $KUBE_RESOURCE/seventv-images

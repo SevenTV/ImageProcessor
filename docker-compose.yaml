@@ -8,7 +8,7 @@ services:
       - 15672:15672
     volumes:
       - rmq:/bitnami
-  
+
   emotes:
     build:
       context: .

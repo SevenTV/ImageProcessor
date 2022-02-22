@@ -54,7 +54,7 @@ func main() {
 	}
 
 	if !config.NoHeader {
-		logrus.Info("7TV Emote Processor")
+		logrus.Info("7TV Image Processor")
 		logrus.Infof("Version: %s", Version)
 		logrus.Infof("build.Time: %s", Time)
 		logrus.Infof("build.User: %s", User)
