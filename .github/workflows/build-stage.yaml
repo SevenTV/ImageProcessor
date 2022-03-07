@@ -12,7 +12,7 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Log into Harbor Registry
         uses: docker/login-action@v1
@@ -51,10 +51,10 @@ jobs:
 
     steps:
       # Checkout repository
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       # Clone k8s repository
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           repository: SevenTV/k8s
           path: k8s
