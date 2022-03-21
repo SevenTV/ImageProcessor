@@ -3,7 +3,7 @@ module github.com/seventv/ImageProcessor
 go 1.17
 
 require (
-	github.com/aws/aws-sdk-go v1.43.3
+	github.com/aws/aws-sdk-go v1.43.21
 	github.com/bugsnag/panicwrap v1.3.4
 	github.com/davecgh/go-spew v1.1.1
 	github.com/google/uuid v1.3.0
@@ -15,10 +15,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
 )
 
-require (
-	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/stretchr/objx v0.1.0 // indirect
-)
+require github.com/hashicorp/errwrap v1.1.0 // indirect
 
 require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
