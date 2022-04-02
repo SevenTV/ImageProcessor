@@ -132,7 +132,7 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 
 	dir := path.Dir(file)
 	frameDir := path.Join(dir, "frames")
-	if err := os.MkdirAll(frameDir, 0700); err != nil {
+	if err := os.MkdirAll(frameDir, 0666); err != nil {
 		return nil, fmt.Errorf("mkdir failed: %s", err.Error())
 	}
 
@@ -268,7 +268,7 @@ func ProcessStage1(ctx context.Context, config *configure.Config, file string, i
 func ProcessStage2(ctx context.Context, config *configure.Config, img *image.Image, sizes map[string]job.ImageSize) error {
 	for v := range sizes {
 		dir := path.Join(img.Dir, "frames", v)
-		if err := os.MkdirAll(dir, 0700); err != nil {
+		if err := os.MkdirAll(dir, 0666); err != nil {
 			return fmt.Errorf("mkdir failed: %s", err.Error())
 		}
 	}

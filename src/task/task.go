@@ -154,7 +154,7 @@ func (t *Task) start(ctx global.Context) {
 		}
 
 		dir := path.Join(ctx.Config().WorkingDir, t.id.String())
-		if err = os.MkdirAll(dir, 0700); err != nil {
+		if err = os.MkdirAll(dir, 0666); err != nil {
 			goto completed
 		}
 
@@ -290,7 +290,7 @@ func (t *Task) start(ctx global.Context) {
 				goto completed
 			}
 
-			err = os.MkdirAll(providerDetails.PathFolder, 0700)
+			err = os.MkdirAll(providerDetails.PathFolder, 0666)
 			if err != nil {
 				goto completed
 			}
