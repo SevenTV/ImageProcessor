@@ -25,13 +25,7 @@ func Encode(ctx context.Context, name string, outName string, dir string, frames
 	args[1] = webpFile
 	args[2] = "-loop"
 	args[3] = "0"
-	args[4] = "-mixed"
-	args[5] = "-m"
-	args[6] = "6"
-	args[7] = "-kmax"
-	args[8] = "0"
-	args[9] = "-q"
-	args[10] = "75"
+	args[4] = "-lossless"
 	for i, v := range delays {
 		args[argOffset+i*3] = "-d"
 		args[argOffset+i*3+1] = fmt.Sprint(v * 10)
