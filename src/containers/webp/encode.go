@@ -19,7 +19,7 @@ func Encode(ctx context.Context, name string, outName string, dir string, frames
 		return err
 	}
 
-	const argOffset = 11
+	const argOffset = 5
 	args := make([]string, len(delays)*3+argOffset)
 	args[0] = "-o"
 	args[1] = webpFile
