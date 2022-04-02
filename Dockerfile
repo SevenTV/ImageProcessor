@@ -6,7 +6,7 @@ FROM harbor.disembark.dev/libs/gifsicle:latest as gifsicle
 
 FROM harbor.disembark.dev/libs/gifski:latest as gifski
 
-FROM golang:1.17.7 as builder
+FROM golang:1.18 as builder
 
 WORKDIR /tmp/images
 
@@ -27,7 +27,7 @@ RUN apt-get update && \
 
 FROM harbor.disembark.dev/libs/ffmpeg:latest
 
-RUN apk add --no-cache optipng vips-tools
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y optipng libvips-tools && apt-get clean
 
 COPY --from=libwebp /libwebp/cwebp /usr/bin
 COPY --from=libwebp /libwebp/dwebp /usr/bin
