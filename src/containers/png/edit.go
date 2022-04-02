@@ -22,8 +22,8 @@ func Edit(ctx context.Context, frames []string, dir string, name string, width u
 		err = fmt.Errorf("vipsthumbnail failed: %s : %s", err.Error(), out)
 	}
 
-	for _, file := range files[4:] {
-		out, err = exec.CommandContext(ctx, "optipng", "-o7", file).CombinedOutput()
+	for _, file := range frames {
+		out, err = exec.CommandContext(ctx, "optipng", "-o7", path.Join(name, file), "-fix", "-force", "-clobber", "-silent").CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("optipng failed: %s %s", err.Error(), out)
 		}
