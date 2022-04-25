@@ -3,7 +3,7 @@ module github.com/seventv/ImageProcessor
 go 1.18
 
 require (
-	github.com/aws/aws-sdk-go v1.43.31
+	github.com/aws/aws-sdk-go v1.43.45
 	github.com/bugsnag/panicwrap v1.3.4
 	github.com/davecgh/go-spew v1.1.1
 	github.com/google/uuid v1.3.0
